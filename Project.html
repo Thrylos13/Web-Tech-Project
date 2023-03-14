@@ -1,17 +1,25 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta name="viewport" content="device-width,initial-scale=1.0">
-        <meta name="author" content="Tanishq Vijay">
-        <meta charset="UTF-8">
+        <meta name="viewport" content="device-width,initial-scale=1.0"/>
+        <meta name="author" content="Tanishq Vijay"/>
+        <meta charset="UTF-8"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <title>Weather Forecast</title>
-        <link rel="stylesheet" type="text/css" href="Project.css">
+        <link rel="stylesheet" type="text/css" href="Project.css"/>
         <script src="Project.js" defer></script>
+        <link rel="icon" sizes="512x512" href="C:\Users\dexte\Desktop\.vscode\favicon_io\android-chrome-512x512.png">
+        <link rel="icon" sizes="192x192" href="C:\Users\dexte\Desktop\.vscode\favicon_io\android-chrome-192x192.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="C:\Users\dexte\Desktop\.vscode\favicon_io\apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="C:\Users\dexte\Desktop\.vscode\favicon_io\favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="C:\Users\dexte\Desktop\.vscode\favicon_io\favicon-16x16.png">
+        <link rel="icon" type="image" href="C:\Users\dexte\Desktop\.vscode\favicon_io\favicon.ico">
+        <link rel="manifest" href="C:\Users\dexte\Desktop\.vscode\favicon_io\site.webmanifest">
     </head>
     <body>
         <div class="container">
         <div class="card">
-            <h1>Today's Weather</h1>
+            <h2>Today's Weather</h2>
             <div class="search">
                 <input type="text" class="search-bar" placeholder="Search Location">
                 <button><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
@@ -32,7 +40,15 @@
             </div>
         </div>
         <div class="image">
-            <img id="img" src="https://source.unsplash.com/1920x1080/?weather"/>
+            <div class="date-container">
+                <div class="time" id="time">
+                    <span id="hours">00</span>:<span id="minutes">00</span>
+                </div>
+                <div class="date" id="date">
+                    <span id="day">Monday</span>,<span id="date-today">1</span><span id="month"> January</span>
+                </div>
+                </div>
+            </script>
         </div>
         </div>
     </body>
