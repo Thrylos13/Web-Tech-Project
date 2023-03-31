@@ -26,7 +26,7 @@
             <h2>Today's Weather</h2>
             <div class="search">
                 <input type="text" class="search-bar" placeholder="Search Location">
-                <button><svg stroke="currentColor" fill="currentColor" stroke-width="0" 
+                <button title="Search"><svg stroke="currentColor" fill="currentColor" stroke-width="0" 
                     viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                     <path 
                     d="M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712 
@@ -38,10 +38,17 @@
                     188s116.1 23.2 158.4 65.6S636 352.2 636 412s-23.3 116.1-65.6 158.4z">
                     </path>
                 </svg></button>
+                <button title="Geolocate" id="geolocation-button"><svg stroke="currentColor" fill="currentColor" stroke-width="0" 
+                    viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="none" stroke="#000" stroke-width="2" 
+                    d="M12,22 C12,22 4,16 4,10 C4,5 8,2 12,2 C16,2 20,5 20,
+                    10 C20,16 12,22 12,22 Z M12,13 C13.657,13 15,11.657 15,10 C15,8.343 13.657,7 12,7 C10.343,7 9,8.343 9,
+                    10 C9,11.657 10.343,13 12,13 L12,13 Z">
+                    </path>
+                </svg></button>
             </div>
             <div class="weather">
-                <h2 class="city">City</h2>
-                <h4 class="location">0.00°N,0.00°E</h4>
+                <h4 class="location" title="lattitude and longitude">0.00°N,0.00°E</h4>
                 <img src="" alt="" class="icon"/>
                 <div class="description">description</div>
                 <div class="humidity">Humidity: 00%</div>
@@ -49,18 +56,19 @@
                 <div class="pressure">Pressure: 00 mb</div>
             </div>
         </div>
-        <div class="image">
+        <div class="box">
             <div class="date-container">
                 <div class="time" id="time">
-                    <span id="hours">00</span>:<span id="minutes">00</span>
+                    <span id="hours" title="hours">00</span>:<span id="minutes"title="minutes">00</span>
                 </div>
                 <div class="date" id="date">
-                    <span id="day">Monday</span>,<span id="date-today">1</span><span id="month"> January</span>
+                    <span id="day" title="day">Monday</span>,<span id="date-today" title="date">1</span><span id="month" title="month"> January</span>
                 </div>
-                <h1 class="temp">0°C</h1>
-                <h5 class="feels_like">Feels like 0°C</h5>
+                <h3 class="city" title="city">City</h3>
+                <div class="country" title="country">INTL</div>
+                <h1 class="temp" title="current temperature">0°C</h1>
+                <h5 class="feels_like" title="apparent temperature">Feels like 0°C</h5>
                 </div>
-            </script>
         </div>
         </div>
     </body>
