@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta name="author" content="Tanishq Vijay"/>
+        <meta charset="UTF-8"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <title>Weather Forecast</title>
+        <link rel="stylesheet" type="text/css" href="Project.css"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+        <script src="Project.js" defer></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌤️</text></svg>">
+    </head>
+    <body>
+
+        <!-- Lava lamp animated background -->
+        <div id="lava-bg">
+            <div class="blob b1"></div>
+            <div class="blob b2"></div>
+            <div class="blob b3"></div>
+            <div class="blob b4"></div>
+        </div>
+
+        <!-- City photo fades in over lava lamp -->
+        <div id="weather-bg"></div>
+
+        <!-- Weather particle canvas (rain, snow, clouds) -->
+        <canvas id="particle-canvas"></canvas>
+
+        <!-- Loading overlay -->
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Fetching weather…</div>
+        </div>
+
+        <!-- Error toast -->
+        <div id="error-box">
+            <span id="error-message"></span>
+            <button id="close-error" onclick="hideError()">&times;</button>
+        </div>
+
+        <!-- Saved locations bar -->
+        <div id="saved-bar">
+            <span class="saved-label">Pinned</span>
+            <div id="saved-chips"></div>
+        </div>
+
+        <div class="container">
+
+            <!-- LEFT CARD -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Today's Weather</h2>
+                    <!-- Unit toggle -->
+                    <button id="unit-toggle" title="Switch to Fahrenheit">°F</button>
+                </div>
+
+                <!-- Search -->
+                <div class="search">
+                    <input type="text" class="search-bar" placeholder="Search Location" autocomplete="off">
+                    <button title="Search">
+                        <svg stroke="currentColor" fill="currentColor" stroke-width="0"
+                            viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712
+                            412c0-80.2-31.3-155.4-87.9-212.1-56.6-56.7-132-87.9-212.1-87.9s-155.5 31.3-212.1 87.9C143.2 256.5
+                            112 331.8 112 412c0 80.1 31.3 155.5 87.9 212.1C256.5
+                            680.8 331.8 712 412 712c67 0 130.6-21.8 182.7-62l259.7 259.6a8.2 8.2 0 0 0 11.6 0l43.6-43.5a8.2
+                            8.2 0 0 0 0-11.6zM570.4 570.4C528 612.7 471.8 636 412 636s-116-23.3-158.4-65.6C211.3 528 188 471.8 188 412s23.3-116.1 65.6-158.4C296 211.3 352.2 188 412
+                            188s116.1 23.2 158.4 65.6S636 352.2 636 412s-23.3 116.1-65.6 158.4z"/>
+                        </svg>
+                    </button>
+                    <button title="Geolocate" id="geolocation-button">
+                        <svg stroke="currentColor" fill="currentColor" stroke-width="0"
+                            viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="none" stroke="#000" stroke-width="2"
+                            d="M12,22 C12,22 4,16 4,10 C4,5 8,2 12,2 C16,2 20,5 20,
+                            10 C20,16 12,22 12,22 Z M12,13 C13.657,13 15,11.657 15,10 C15,8.343 13.657,7 12,7 C10.343,7 9,8.343 9,
+                            10 C9,11.657 10.343,13 12,13 L12,13 Z"/>
+                        </svg>
+                    </button>
+                    <!-- Pin current city -->
+                    <button id="pin-button" title="Pin this city to saved locations">📌</button>
+                    <ul class="suggestions-list hidden" id="suggestions-list"></ul>
+                </div>
+
+                <!-- Current conditions -->
+                <div class="weather">
+                    <h4 class="location" title="GPS coordinates">0.00°N, 0.00°E</h4>
+                    <img id="weather-icon" src="" alt="Weather icon" class="icon" title="Weather condition icon"/>
+                    <div class="description" title="Current weather condition">description</div>
+                    <div class="humidity"  title="Relative humidity. Above 70% muggy, below 30% dry.">Humidity: 00%</div>
+                    <div class="wind"      title="Wind speed. Calm 0–5 | Breezy 6–19 | Windy 20–38 | Strong 39+">Wind Speed: 0 km/h</div>
+                    <div class="pressure"  title="Sea-level pressure. Normal 1000–1025 mb. Lower = stormy, Higher = clear.">Pressure: 00 mb</div>
+                    <div class="visibility" title="Horizontal visibility. 10 km = perfectly clear. Below 1 km = fog/heavy rain.">Visibility: -- km</div>
+
+                    <!-- Sunrise / Sunset -->
+                    <div class="sun-row">
+                        <div class="sun-item" title="Sunrise time at this location">
+                            <span class="sun-icon">🌅</span>
+                            <span id="sunrise-val">--:--</span>
+                        </div>
+                        <div class="sun-item" title="Sunset time at this location">
+                            <span class="sun-icon">🌇</span>
+                            <span id="sunset-val">--:--</span>
+                        </div>
+                    </div>
+
+                    <!-- AQI + UV -->
+                    <div class="aqi-uv-row">
+                        <div class="aqi-box" id="aqi-box" title="Air Quality Index 1=Good 5=Very Poor">
+                            <span class="aqi-uv-label">AQI</span>
+                            <span class="aqi-uv-value" id="aqi-value">--</span>
+                            <span class="aqi-uv-cat"   id="aqi-cat">--</span>
+                        </div>
+                        <div class="uv-box" id="uv-box" title="UV Index. Low 0–2 | Moderate 3–5 | High 6–7 | Very High 8–10 | Extreme 11+">
+                            <span class="aqi-uv-label">UV</span>
+                            <span class="aqi-uv-value" id="uv-value">--</span>
+                            <span class="aqi-uv-cat"   id="uv-cat">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT BOX -->
+            <div class="box" id="right-box">
+                <div class="date-container">
+                    <!-- Clock -->
+                    <div class="time" id="time">
+                        <span id="hours"   title="Local hour">00</span>:<span id="minutes" title="Local minutes">00</span>
+                    </div>
+                    <div class="date" id="date">
+                        <span id="day">Monday</span>,<span id="date-today">1</span><span id="month"> January</span>
+                    </div>
+
+                    <h3 class="city"      title="City name">City</h3>
+                    <div class="country"  title="Country code">INTL</div>
+                    <h1 class="temp"      title="Current temperature">0°C</h1>
+                    <h5 class="feels_like" title="Apparent temperature">Feels like 0°C</h5>
+                    <div class="high-low" title="Today's high and low">H: --°  |  L: --°</div>
+
+                    <!-- 5-day forecast strip -->
+                    <div id="forecast-strip" title="5-day forecast"></div>
+
+                    <!-- Button to open chart panel -->
+                    <button id="chart-toggle-btn" title="Show 24h temperature and precipitation chart">
+                        📈 24h Chart
+                    </button>
+                </div>
+            </div>
+
+            <!-- CHART PANEL — slides in to the right on demand -->
+            <div class="chart-panel" id="chart-panel">
+                <div class="chart-panel-inner">
+                    <div class="chart-panel-header">
+                        <span class="chart-panel-title">24h Forecast</span>
+                        <button id="chart-close-btn" title="Close chart">✕</button>
+                    </div>
+                    <div class="chart-panel-body">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /.container -->
+
+    </body>
+</html>
