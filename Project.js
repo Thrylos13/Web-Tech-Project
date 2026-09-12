@@ -30,6 +30,81 @@ const UNSPLASH_KEY = "giLKzUHkpzkpLgazEDIqG4Y2GyZYSU_LXyy4VeIHOyE";
 const OWM_KEY      = "244738892f67a6ec9b1fe73e4627dd72";
 
 // ═══════════════════════════════════════════════════════════════════
+// WEB WORKER — offloads ML computations (k-means clustering, linear
+// regression) off the main thread so the UI never freezes during
+// calculation, even though these particular datasets are small.
+// Demonstrates the pattern: the same ml-utils.js functions are used
+// by the worker (via importScripts) and are unit-tested independently.
+// ═══════════════════════════════════════════════════════════════════
+const mlWorker = new Worker("./ml-worker.js");
+
+function runInWorker(type, payload) {
+  return new Promise((resolve, reject) => {
+    const requestId = Math.random().toString(36).slice(2);
+    function handler(e) {
+      if (e.data.requestId !== requestId) return;
+      mlWorker.removeEventListener("message", handler);
+      if (e.data.error) reject(new Error(e.data.error));
+      else resolve(e.data.result);
+    }
+    mlWorker.addEventListener("message", handler);
+    mlWorker.postMessage({ type, payload, requestId });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// API RETRY LOGIC — exponential backoff with jitter
+// Wraps fetch() so transient network failures or 5xx server errors
+// are retried automatically before giving up, instead of failing on
+// the first blip. Used for every external weather/photo API call.
+// ═══════════════════════════════════════════════════════════════════
+function fetchWithRetry(url, options = {}, maxRetries = 3, baseDelay = 500) {
+  return new Promise((resolve, reject) => {
+    function attempt(retryCount) {
+      fetch(url, options)
+        .then(response => {
+          if (!response.ok && response.status >= 500 && retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 200;
+            setTimeout(() => attempt(retryCount + 1), delay);
+          } else {
+            resolve(response);
+          }
+        })
+        .catch(err => {
+          if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 200;
+            setTimeout(() => attempt(retryCount + 1), delay);
+          } else {
+            reject(err);
+          }
+        });
+    }
+    attempt(0);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THEME TOGGLE — light/dark, persisted in localStorage
+// The <head> already applies data-theme before first paint to avoid
+// a flash; this just wires the button and keeps it in sync.
+// ═══════════════════════════════════════════════════════════════════
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = theme === "light" ? "🌙" : "☀️";
+  localStorage.setItem("theme", theme);
+}
+(function initThemeIcon() {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = current === "light" ? "🌙" : "☀️";
+})();
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // UNIT TOGGLE — persisted in localStorage
 // ═══════════════════════════════════════════════════════════════════
 let isCelsius = localStorage.getItem("unit") !== "F";
@@ -142,7 +217,6 @@ function applyTimeTheme(timezone) {
 function fmtUnixTime(unix, timezone) {
   const utcHours = timezone / 3600;
   const d = new Date((unix + utcHours * 3600) * 1000);
-  // UTC hours/minutes from the adjusted time
   const h = d.getUTCHours(), m = d.getUTCMinutes();
   const ampm = h >= 12 ? "PM" : "AM";
   const h12  = h % 12 || 12;
@@ -158,7 +232,7 @@ function setBackground(cityName, country) {
   const url   = "https://api.unsplash.com/photos/random" +
                 "?query=" + query +
                 "&orientation=landscape&content_filter=high&count=1";
-  fetch(url, { headers: { "Authorization": "Client-ID " + UNSPLASH_KEY, "Accept-Version": "v1" } })
+  fetchWithRetry(url, { headers: { "Authorization": "Client-ID " + UNSPLASH_KEY, "Accept-Version": "v1" } })
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(data => {
       const photo = Array.isArray(data) ? data[0] : data;
@@ -177,30 +251,28 @@ function setBackground(cityName, country) {
 // ANIMATED WEATHER ICON — OWM PNG + CSS keyframe animation per condition
 // ═══════════════════════════════════════════════════════════════════
 const conditionAnimMap = {
-  Clear:        "icon-spin",       // sun spinning slowly
-  Clouds:       "icon-drift",      // gentle horizontal drift
-  Rain:         "icon-bounce",     // rhythmic drop bounce
+  Clear:        "icon-spin",
+  Clouds:       "icon-drift",
+  Rain:         "icon-bounce",
   Drizzle:      "icon-bounce",
-  Thunderstorm: "icon-flash",      // lightning flash/pulse
-  Snow:         "icon-sway",       // gentle sway
+  Thunderstorm: "icon-flash",
+  Snow:         "icon-sway",
   Mist:         "icon-drift",
   Fog:          "icon-drift",
-  Haze:         "icon-pulse",      // slow in-out glow
+  Haze:         "icon-pulse",
   Smoke:        "icon-drift",
   Dust:         "icon-sway",
   Sand:         "icon-sway",
   Ash:          "icon-drift",
-  Squall:       "icon-shake",      // rapid shake (wind)
-  Tornado:      "icon-spin-fast",  // fast spin
+  Squall:       "icon-shake",
+  Tornado:      "icon-spin-fast",
 };
 
 function setWeatherIcon(iconCode, condition) {
   const img = document.getElementById("weather-icon");
   img.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-  // Remove all previous animation classes
   img.className = "icon";
   const animClass = conditionAnimMap[condition] || "icon-pulse";
-  // Small delay so the class is applied after the src swap
   setTimeout(() => img.classList.add(animClass), 50);
 }
 
@@ -208,7 +280,6 @@ function setWeatherIcon(iconCode, condition) {
 // TEMPERATURE COUNT-UP ANIMATION
 // ═══════════════════════════════════════════════════════════════════
 function countUp(element, targetText, duration = 800) {
-  // Extract numeric part and suffix separately
   const match  = targetText.match(/^(-?\d+\.?\d*)(.*)/);
   if (!match) { element.innerText = targetText; return; }
   const target = parseFloat(match[1]);
@@ -219,7 +290,6 @@ function countUp(element, targetText, duration = 800) {
   function step(now) {
     const elapsed  = now - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // Ease out cubic
     const eased    = 1 - Math.pow(1 - progress, 3);
     const current  = (start + (target - start) * eased).toFixed(
       suffix.includes(".") ? 2 : 0
@@ -233,7 +303,6 @@ function countUp(element, targetText, duration = 800) {
 
 // ═══════════════════════════════════════════════════════════════════
 // WEATHER PARTICLE SYSTEM
-// Rain, snow, or drifting cloud particles based on condition
 // ═══════════════════════════════════════════════════════════════════
 const particleCanvas  = document.getElementById("particle-canvas");
 const pCtx            = particleCanvas.getContext("2d");
@@ -257,13 +326,11 @@ function createParticle() {
       opacity: 0.35 + Math.random() * 0.45 };
   }
   if (particleType === "thunder") {
-    // Heavy rain with occasional bright flash timing stored on particle
     return { x: Math.random() * w, y: Math.random() * -h,
       len: 22 + Math.random() * 28, speed: 22 + Math.random() * 16,
       opacity: 0.4 + Math.random() * 0.5, flash: Math.random() < 0.003 };
   }
   if (particleType === "tornado") {
-    // Spiral debris particles from a center vortex
     const angle = Math.random() * Math.PI * 2;
     const r = 60 + Math.random() * 180;
     return { cx: w / 2, cy: h / 2, r, angle,
@@ -282,7 +349,6 @@ function createParticle() {
       opacity: 0.08 + Math.random() * 0.1 };
   }
   if (particleType === "scorch") {
-    // Heat shimmer — tiny golden sparks rising
     return { x: Math.random() * w, y: h + Math.random() * 40,
       r: 1 + Math.random() * 2.5, speed: 0.6 + Math.random() * 1.4,
       drift: (Math.random() - 0.5) * 0.8,
@@ -305,7 +371,6 @@ function animateParticles() {
     if (p) particles.push(p);
   }
 
-  // Thunderstorm: random full-screen lightning flash
   if (particleType === "thunder" && Math.random() < 0.004) {
     pCtx.save();
     pCtx.fillStyle = "rgba(200,220,255,0.1)";
@@ -435,8 +500,8 @@ function fetchAQIandUV(lat, lon) {
   const aqiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OWM_KEY}`;
   const uvUrl  = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=uv_index&timezone=auto`;
   Promise.allSettled([
-    fetch(aqiUrl, { mode:"cors" }).then(r => r.json()),
-    fetch(uvUrl,  { mode:"cors" }).then(r => r.json()),
+    fetchWithRetry(aqiUrl, { mode:"cors" }).then(r => r.json()),
+    fetchWithRetry(uvUrl,  { mode:"cors" }).then(r => r.json()),
   ]).then(([aqiRes, uvRes]) => {
     if (aqiRes.status === "fulfilled") {
       const aqi = aqiRes.value.list[0].main.aqi;
@@ -459,12 +524,11 @@ function fetchAQIandUV(lat, lon) {
 
 // ═══════════════════════════════════════════════════════════════════
 // 5-DAY FORECAST + HOURLY
-// Both from OWM /forecast (free, same key, 40 entries × 3h)
 // ═══════════════════════════════════════════════════════════════════
-let lastForecast = null; // raw forecast list
+let lastForecast = null;
 
 function fetchForecast(lat, lon) {
-  fetch(
+  fetchWithRetry(
     `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`,
     { mode: "cors" }
   )
@@ -472,7 +536,7 @@ function fetchForecast(lat, lon) {
   .then(data => {
     lastForecast = data.list;
     renderForecastStrip();
-    renderHourly(); // pre-build chart so it's ready the instant panel opens
+    renderHourly();
   })
   .catch(err => console.warn("Forecast fetch failed:", err));
 }
@@ -483,7 +547,6 @@ function renderForecastStrip() {
   const strip = document.getElementById("forecast-strip");
   strip.innerHTML = "";
 
-  // Group all entries by local date string (YYYY-MM-DD)
   const byDay = {};
   lastForecast.forEach(entry => {
     const date = entry.dt_txt.slice(0, 10);
@@ -493,32 +556,27 @@ function renderForecastStrip() {
 
   const dates = Object.keys(byDay);
 
-  // ── Fix bug 2: today's true H/L from all of today's forecast entries
   const todayEntries = byDay[dates[0]];
   if (todayEntries) {
     const todayHi = Math.max(...todayEntries.map(e => e.main.temp_max));
     const todayLo = Math.min(...todayEntries.map(e => e.main.temp_min));
-    // Store on lastData so renderTemps() can access them
     if (lastData) {
       lastData.main.temp_max = todayHi;
       lastData.main.temp_min = todayLo;
-      renderTemps(); // re-render now that we have real H/L
+      renderTemps();
     }
   }
 
-  // ── 5-day strip: skip today, show next 5 days
   const futureDates = dates.slice(1, 6);
-  const regressionPoints = []; // {x: dayIndex, y: avgTemp} for linear regression
+  const regressionPoints = [];
 
   futureDates.forEach((date, idx) => {
     const entries = byDay[date];
 
-    // True H/L: max of temp_max and min of temp_min across ALL entries that day
     const hi = Math.max(...entries.map(e => e.main.temp_max));
     const lo = Math.min(...entries.map(e => e.main.temp_min));
     regressionPoints.push({ x: idx, y: (hi + lo) / 2 });
 
-    // Icon + day name: use the noon-closest entry for representative conditions
     const noon = entries.reduce((best, e) => {
       const h = new Date(e.dt * 1000).getUTCHours();
       return Math.abs(h - 12) < Math.abs(new Date(best.dt * 1000).getUTCHours() - 12) ? e : best;
@@ -544,29 +602,23 @@ function renderForecastStrip() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// TRADITIONAL ML #1 — Simple Linear Regression (least squares)
-// Fits a straight line to the next 5 days' average temps to detect
-// whether the short-term trend is warming, cooling, or stable.
-// Pure JS, no library — y = mx + b via the standard least-squares formula.
+// ML #1: Linear Regression trend badge — computed in the Web Worker
+// via ml-utils.js's linearRegression(). Detects whether the next 5
+// days are warming, cooling, or stable.
 // ─────────────────────────────────────────────────────────────────────
-function linearRegression(points) {
-  const n = points.length;
-  if (n < 2) return { slope: 0, intercept: points[0]?.y || 0 };
-  const sumX  = points.reduce((s, p) => s + p.x, 0);
-  const sumY  = points.reduce((s, p) => s + p.y, 0);
-  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
-  const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  return { slope, intercept };
-}
-
-function renderForecastTrend(points) {
+async function renderForecastTrend(points) {
   const el = document.getElementById("forecast-trend");
   if (!el || points.length < 2) return;
 
-  const { slope } = linearRegression(points);
-  const slopeDisplay = isCelsius ? slope : slope * 9 / 5; // convert °C/day slope to °F/day
+  let slope = 0;
+  try {
+    const result = await runInWorker("regression", { points });
+    slope = result.slope;
+  } catch (e) {
+    console.warn("Regression worker failed:", e);
+  }
+
+  const slopeDisplay = isCelsius ? slope : slope * 9 / 5;
   const absSlope = Math.abs(slopeDisplay);
 
   let icon, label, cls;
@@ -580,32 +632,29 @@ function renderForecastTrend(points) {
 
   el.textContent = `${icon} ${label}`;
   el.className = "forecast-trend " + cls;
-  el.title = "Linear regression fit across the next 5 days' average temperatures";
+  el.title = "Linear regression fit across the next 5 days' average temperatures (computed in a Web Worker)";
 }
 
-// Re-render just the temperature text when unit is toggled
 function renderForecastTemps() {
   document.querySelectorAll(".forecast-card").forEach(card => {
     card.querySelector(".fc-hi").textContent = fmtTemp(parseFloat(card.dataset.hi));
     card.querySelector(".fc-lo").textContent = fmtTemp(parseFloat(card.dataset.lo));
   });
-  // Recompute regression points from stored card data so trend badge updates units too
   const points = Array.from(document.querySelectorAll(".forecast-card")).map((card, idx) => ({
     x: idx,
     y: (parseFloat(card.dataset.hi) + parseFloat(card.dataset.lo)) / 2,
   }));
   renderForecastTrend(points);
-  // Only rebuild chart if panel is currently visible
   if (chartPanel.classList.contains("open")) renderHourly();
 }
 
-// ── Hourly chart: Chart.js combo — temp line + precip bars ────────
+// ── Hourly chart: Chart.js combo — temp line + precip line ────────
 let hourlyChart = null;
 
 function renderHourly() {
   if (!lastForecast) return;
 
-  const entries = lastForecast.slice(0, 8); // next 24h in 3h steps
+  const entries = lastForecast.slice(0, 8);
 
   const labels = entries.map(e => {
     const d  = new Date(e.dt * 1000);
@@ -620,7 +669,6 @@ function renderHourly() {
   const canvas = document.getElementById("hourly-chart");
   if (!canvas) return;
 
-  // Destroy existing instance before rebuilding
   if (hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
 
   hourlyChart = new Chart(canvas, {
@@ -740,57 +788,49 @@ function renderHourly() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// TRADITIONAL ML #2 — K-Means Clustering ("similar weather cities")
-// Clusters the current city + pinned cities by {temp, humidity, windKmh}
-// so pinned cities sharing a cluster with the current city get highlighted
-// as having genuinely similar weather right now — not just similar names.
-// Pure JS k-means, no library.
-// ─────────────────────────────────────────────────────────────────────
-function kMeans(points, k) {
-  if (points.length <= k) return points.map((_, i) => i); // each its own cluster
-  // Normalize each dimension to 0-1 so temp/humidity/wind contribute equally
-  const dims = ["temp", "humidity", "wind"];
-  const ranges = dims.map(d => {
-    const vals = points.map(p => p[d]);
-    return { min: Math.min(...vals), max: Math.max(...vals) };
-  });
-  const norm = points.map(p =>
-    dims.map((d, i) => {
-      const { min, max } = ranges[i];
-      return max === min ? 0 : (p[d] - min) / (max - min);
-    })
-  );
+// ═══════════════════════════════════════════════════════════════════
+// ACCESSIBILITY — focus trap for modal overlays + live region
+// ═══════════════════════════════════════════════════════════════════
+let modalPreviousFocus = null;
 
-  // Init centroids as k evenly spaced points from the normalized data
-  let centroids = Array.from({ length: k }, (_, i) =>
-    norm[Math.floor((i * norm.length) / k)]
-  );
-
-  let assignments = new Array(norm.length).fill(0);
-  for (let iter = 0; iter < 15; iter++) {
-    // Assign step
-    assignments = norm.map(p => {
-      let best = 0, bestDist = Infinity;
-      centroids.forEach((c, ci) => {
-        const dist = dims.reduce((s, _, di) => s + (p[di] - c[di]) ** 2, 0);
-        if (dist < bestDist) { bestDist = dist; best = ci; }
-      });
-      return best;
-    });
-    // Update step
-    centroids = centroids.map((c, ci) => {
-      const members = norm.filter((_, i) => assignments[i] === ci);
-      if (!members.length) return c;
-      return dims.map((_, di) => members.reduce((s, m) => s + m[di], 0) / members.length);
-    });
+function trapFocus(modalEl) {
+  modalPreviousFocus = document.activeElement;
+  const focusables = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusables.length) focusables[0].focus();
+  function handleKey(e) {
+    if (e.key !== "Tab") return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
-  return assignments;
+  modalEl._focusTrapHandler = handleKey;
+  modalEl.addEventListener("keydown", handleKey);
 }
 
-// Lightweight current-conditions fetch (used only for clustering, not full display)
+function releaseFocus(modalEl) {
+  if (modalEl._focusTrapHandler) {
+    modalEl.removeEventListener("keydown", modalEl._focusTrapHandler);
+    modalEl._focusTrapHandler = null;
+  }
+  if (modalPreviousFocus && typeof modalPreviousFocus.focus === "function") {
+    modalPreviousFocus.focus();
+  }
+}
+
+function updateAriaLive(data) {
+  const region = document.getElementById("aria-live-status");
+  if (!region) return;
+  const t = isCelsius ? data.main.temp.toFixed(0) + "°C" : toF(data.main.temp) + "°F";
+  region.textContent = `Weather updated for ${data.name}: ${t}, ${data.weather[0].description}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ML #2: K-Means Clustering — computed in the Web Worker via
+// ml-utils.js's kMeans(). Groups pinned cities by current
+// {temp, humidity, wind} to find ones with genuinely similar weather.
+// ─────────────────────────────────────────────────────────────────────
 function fetchQuickWeather(lat, lon) {
-  return fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`)
+  return fetchWithRetry(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`)
     .then(r => r.json())
     .then(d => ({ temp: d.main.temp, humidity: d.main.humidity, wind: d.wind.speed * 3.6 }))
     .catch(() => null);
@@ -806,21 +846,26 @@ function updateSimilarCities() {
   };
 
   Promise.all(savedLocations.map(loc => fetchQuickWeather(loc.lat, loc.lon)))
-    .then(profiles => {
+    .then(async profiles => {
       const points = [currentProfile, ...profiles.filter(p => p)];
       const validIndices = profiles.map((p, i) => p ? i : null).filter(i => i !== null);
       if (points.length < 2) return;
 
       const k = Math.min(3, points.length);
-      const clusters = kMeans(points, k);
+      let clusters;
+      try {
+        clusters = await runInWorker("kmeans", { points, k });
+      } catch (e) {
+        console.warn("K-means worker failed:", e);
+        return;
+      }
       const currentCluster = clusters[0];
 
-      // Reset all chips, then highlight ones sharing the current cluster
       const chips = savedChips.querySelectorAll(".saved-chip");
       validIndices.forEach((origIdx, pointsIdx) => {
         const chip = chips[origIdx];
         if (!chip) return;
-        const chipCluster = clusters[pointsIdx + 1]; // +1 offset since index 0 is current city
+        const chipCluster = clusters[pointsIdx + 1];
         if (chipCluster === currentCluster) {
           chip.classList.add("chip-similar");
           chip.title = `Similar weather to ${currentLocation.name} right now`;
@@ -833,10 +878,27 @@ function updateSimilarCities() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SAVED LOCATIONS — persisted in localStorage
+// SAVED LOCATIONS — IndexedDB, falls back to localStorage if
+// IndexedDB is unavailable (private browsing, very old browsers).
 // ═══════════════════════════════════════════════════════════════════
-let savedLocations = JSON.parse(localStorage.getItem("savedLocations") || "[]");
+let savedLocations  = [];
 let currentLocation = null; // { name, country, lat, lon }
+
+async function loadSavedLocations() {
+  try {
+    savedLocations = await IDB.idbGetAll("pinnedCities");
+    // One-time migration from an older localStorage-only version
+    if (!savedLocations.length) {
+      const legacy = JSON.parse(localStorage.getItem("savedLocations") || "[]");
+      for (const loc of legacy) await IDB.idbAdd("pinnedCities", loc);
+      if (legacy.length) savedLocations = await IDB.idbGetAll("pinnedCities");
+    }
+  } catch (e) {
+    console.warn("IndexedDB unavailable, falling back to localStorage:", e);
+    savedLocations = JSON.parse(localStorage.getItem("savedLocations") || "[]");
+  }
+  renderSavedChips();
+}
 
 function renderSavedChips() {
   savedChips.innerHTML = "";
@@ -848,51 +910,57 @@ function renderSavedChips() {
   savedLocations.forEach((loc, i) => {
     const chip = document.createElement("div");
     chip.className = "saved-chip";
-    chip.innerHTML = `<span>${loc.name}</span><button class="chip-remove" data-i="${i}" title="Remove">×</button>`;
+    chip.innerHTML = `<span>${loc.name}</span><button class="chip-remove" data-i="${i}" title="Remove" aria-label="Remove ${loc.name}">×</button>`;
     chip.querySelector("span").addEventListener("click", () => {
       weather.fetchWeatherByCoords(loc.lat, loc.lon);
     });
-    chip.querySelector(".chip-remove").addEventListener("click", e => {
+    chip.querySelector(".chip-remove").addEventListener("click", async e => {
       e.stopPropagation();
-      savedLocations.splice(i, 1);
-      localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
+      try {
+        if (loc.id !== undefined) await IDB.idbDelete("pinnedCities", loc.id);
+        savedLocations = await IDB.idbGetAll("pinnedCities");
+      } catch (err) {
+        savedLocations.splice(i, 1);
+        localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
+      }
       renderSavedChips();
     });
     savedChips.appendChild(chip);
   });
 }
 
-pinButton.addEventListener("click", function () {
+pinButton.addEventListener("click", async function () {
   if (!currentLocation) return;
   const already = savedLocations.find(l => l.lat === currentLocation.lat && l.lon === currentLocation.lon);
   if (already) { showError("Already pinned!"); return; }
   if (savedLocations.length >= 6) { showError("Max 6 pinned locations."); return; }
-  savedLocations.push(currentLocation);
-  localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
+  try {
+    await IDB.idbAdd("pinnedCities", { ...currentLocation });
+    savedLocations = await IDB.idbGetAll("pinnedCities");
+  } catch (e) {
+    savedLocations.push(currentLocation);
+    localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
+  }
   renderSavedChips();
   updateSimilarCities();
 });
 
-renderSavedChips(); // render on page load from localStorage
+loadSavedLocations(); // async init on page load
 
 // ═══════════════════════════════════════════════════════════════════
 // WEATHER OBJECT
 // ═══════════════════════════════════════════════════════════════════
 let weather = {
 
-  // geocoderName: the clean city name from the geocoder (e.g. "Mumbai").
-  // OWM's reverse lookup often returns admin region names ("Konkan Division")
-  // instead of the city name — so we always prefer the geocoder's version.
   fetchWeatherByCoords: function (lat, lon, geocoderName) {
     showLoading("Fetching weather…");
-    fetch(
+    fetchWithRetry(
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`,
       { mode: "cors" }
     )
     .then(r => { if (!r.ok) throw new Error("Location not found"); return r.json(); })
     .then(data => {
       hideError();
-      // Override OWM's often-wrong region name with the geocoder's city name
       if (geocoderName) data.name = geocoderName;
       this.displayWeather(data);
     })
@@ -920,50 +988,30 @@ let weather = {
     document.querySelector(".visibility").innerText  = visKm !== null ? "Visibility: " + visKm + " km" : "Visibility: N/A";
     document.querySelector(".location").innerText    = `Latitude: ${lat}°N, Longitude: ${lon}°E`;
 
-    // Wind compass
     updateCompass(windDeg || 0);
-
-    // Animated weather icon (CSS keyframes on OWM PNG)
     setWeatherIcon(icon, condition);
-
-    // Particle effect based on condition
     setParticleEffect(condition);
-
-    // Card entrance animation
     animateCardsIn();
 
-    // Sunrise / Sunset
     document.getElementById("sunrise-val").textContent = fmtUnixTime(sunrise, timezone);
     document.getElementById("sunset-val").textContent  = fmtUnixTime(sunset,  timezone);
 
-    // Temps (respects current unit)
     renderTemps();
-
-    // Dynamic card theme
     applyTimeTheme(timezone);
 
-    // Save to history
     saveToHistory({ name, lat, lon });
-
-    // Condition-based alerts
     generateAlerts(data);
-
-    // AI-style natural language summary (rule-based)
     generateAISummary(data);
-
-    // K-means: refresh which pinned cities have similar weather right now
     updateSimilarCities();
+    updateAriaLive(data);
 
-    // Background, AQI+UV, Forecast
     setBackground(name, country);
     fetchAQIandUV(lat, lon);
     fetchForecast(lat, lon);
 
-    // Close chart panel so it rebuilds fresh for the new city
     chartPanel.classList.remove("open");
     rightBox.classList.remove("panel-open");
 
-    // Search bar display mode
     searchBar.value    = name;
     searchBar.readOnly = true;
     searchBar.classList.add("display-mode");
@@ -977,7 +1025,7 @@ let weather = {
     const query = searchBar.value.trim();
     if (!query) return;
     showLoading("Looking up location…");
-    fetch(
+    fetchWithRetry(
       `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=1&appid=${OWM_KEY}`,
       { mode: "cors" }
     )
@@ -988,7 +1036,6 @@ let weather = {
         showError(`Location not found — try e.g. "Earth, Texas, US"`);
         return;
       }
-      // Pass the geocoder's city name so OWM's region name is never displayed
       this.fetchWeatherByCoords(results[0].lat, results[0].lon, results[0].name);
     })
     .catch(err => { hideLoading(); showError("Error: Could not resolve location."); });
@@ -1014,13 +1061,12 @@ document.getElementById("geolocation-button").addEventListener("click", function
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// SEARCH BUTTON + ENTER KEY
+// SEARCH BUTTON
 // ═══════════════════════════════════════════════════════════════════
 document.querySelector(".search button").addEventListener("click", () => weather.search());
-searchBar.addEventListener("keyup", e => { if (e.key === "Enter") weather.search(); });
 
 // ═══════════════════════════════════════════════════════════════════
-// SEARCH BAR FOCUS — exits display mode
+// SEARCH BAR FOCUS — exits display mode, shows history if empty
 // ═══════════════════════════════════════════════════════════════════
 searchBar.addEventListener("focus", function () {
   if (this.classList.contains("display-mode")) {
@@ -1032,11 +1078,22 @@ searchBar.addEventListener("focus", function () {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// AUTOCOMPLETE
+// AUTOCOMPLETE + KEYBOARD NAVIGATION (accessibility)
 // ═══════════════════════════════════════════════════════════════════
 let debounceTimer;
+let suggestionIndex = -1;
+
+function getSuggestionItems() {
+  return Array.from(suggestionsList.querySelectorAll("li")).filter(li => !li.classList.contains("history-header"));
+}
+function updateSuggestionHighlight(items) {
+  items.forEach((li, i) => li.classList.toggle("suggestion-active", i === suggestionIndex));
+  if (items[suggestionIndex]) items[suggestionIndex].scrollIntoView({ block: "nearest" });
+}
+
 searchBar.addEventListener("input", function () {
   clearTimeout(debounceTimer);
+  suggestionIndex = -1;
   const query = this.value.trim();
   if (query.length < 2) {
     hideSuggestions();
@@ -1044,7 +1101,7 @@ searchBar.addEventListener("input", function () {
     return;
   }
   debounceTimer = setTimeout(() => {
-    fetch(
+    fetchWithRetry(
       `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=6&appid=${OWM_KEY}`,
       { mode: "cors" }
     )
@@ -1054,6 +1111,7 @@ searchBar.addEventListener("input", function () {
       if (!cities.length) { hideSuggestions(); return; }
       cities.forEach(city => {
         const li    = document.createElement("li");
+        li.setAttribute("role", "option");
         li.textContent = [city.name, city.state, city.country].filter(Boolean).join(", ");
         li.addEventListener("click", () => {
           searchBar.value = city.name;
@@ -1063,9 +1121,46 @@ searchBar.addEventListener("input", function () {
         suggestionsList.appendChild(li);
       });
       suggestionsList.classList.remove("hidden");
+      searchBar.setAttribute("aria-expanded", "true");
     })
     .catch(() => hideSuggestions());
   }, 300);
+});
+
+// Single keydown handler covers plain Enter (search), suggestion
+// navigation (Arrow keys), suggestion selection (Enter while
+// highlighted), and closing the list (Escape) — avoids double-firing
+// that a separate keyup listener would cause.
+searchBar.addEventListener("keydown", function (e) {
+  const items = getSuggestionItems();
+  const isOpen = !suggestionsList.classList.contains("hidden") && items.length > 0;
+
+  if (isOpen && e.key === "ArrowDown") {
+    e.preventDefault();
+    suggestionIndex = Math.min(suggestionIndex + 1, items.length - 1);
+    updateSuggestionHighlight(items);
+    return;
+  }
+  if (isOpen && e.key === "ArrowUp") {
+    e.preventDefault();
+    suggestionIndex = Math.max(suggestionIndex - 1, 0);
+    updateSuggestionHighlight(items);
+    return;
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (isOpen && suggestionIndex >= 0) {
+      items[suggestionIndex].click();
+    } else {
+      weather.search();
+    }
+    suggestionIndex = -1;
+    return;
+  }
+  if (e.key === "Escape") {
+    hideSuggestions();
+    suggestionIndex = -1;
+  }
 });
 
 document.addEventListener("click", e => {
@@ -1075,6 +1170,7 @@ document.addEventListener("click", e => {
 function hideSuggestions() {
   suggestionsList.classList.add("hidden");
   suggestionsList.innerHTML = "";
+  searchBar.setAttribute("aria-expanded", "false");
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1086,19 +1182,45 @@ function updateCompass(deg) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SEARCH HISTORY
+// SEARCH HISTORY — IndexedDB, falls back to localStorage
 // ═══════════════════════════════════════════════════════════════════
-let searchHistory = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+let searchHistory = [];
 
-function saveToHistory(loc) {
-  searchHistory = searchHistory.filter(h => !(h.lat === loc.lat && h.lon === loc.lon));
-  searchHistory.unshift(loc);
-  if (searchHistory.length > 8) searchHistory = searchHistory.slice(0, 8);
-  localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
+async function loadSearchHistory() {
+  try {
+    searchHistory = await IDB.idbGetAll("searchHistory");
+    searchHistory.sort((a, b) => (b.id || 0) - (a.id || 0));
+  } catch (e) {
+    searchHistory = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+  }
+}
+loadSearchHistory();
+
+async function saveToHistory(loc) {
+  try {
+    const existing = await IDB.idbGetAll("searchHistory");
+    const dup = existing.find(h => h.lat === loc.lat && h.lon === loc.lon);
+    if (dup) await IDB.idbDelete("searchHistory", dup.id);
+    await IDB.idbAdd("searchHistory", loc);
+    let updated = await IDB.idbGetAll("searchHistory");
+    updated.sort((a, b) => b.id - a.id);
+    if (updated.length > 8) {
+      const toRemove = updated.slice(8);
+      for (const r of toRemove) await IDB.idbDelete("searchHistory", r.id);
+      updated = updated.slice(0, 8);
+    }
+    searchHistory = updated;
+  } catch (e) {
+    searchHistory = searchHistory.filter(h => !(h.lat === loc.lat && h.lon === loc.lon));
+    searchHistory.unshift(loc);
+    if (searchHistory.length > 8) searchHistory = searchHistory.slice(0, 8);
+    localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
+  }
 }
 
 function showHistory() {
   if (!searchHistory.length) return;
+  suggestionIndex = -1;
   suggestionsList.innerHTML = "";
   const header = document.createElement("li");
   header.className = "history-header";
@@ -1107,6 +1229,7 @@ function showHistory() {
   searchHistory.forEach(loc => {
     const li = document.createElement("li");
     li.className = "history-item";
+    li.setAttribute("role", "option");
     li.innerHTML = `<span class="history-icon">🕐</span>${loc.name}`;
     li.addEventListener("click", () => {
       searchBar.value = loc.name;
@@ -1116,10 +1239,11 @@ function showHistory() {
     suggestionsList.appendChild(li);
   });
   suggestionsList.classList.remove("hidden");
+  searchBar.setAttribute("aria-expanded", "true");
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// / KEYBOARD SHORTCUT — focus search bar
+// KEYBOARD SHORTCUTS — "/" focuses search, Escape closes overlays
 // ═══════════════════════════════════════════════════════════════════
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== searchBar &&
@@ -1133,6 +1257,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closeMap();
     closeEmbed();
+    closeHistory();
   }
 });
 
@@ -1237,6 +1362,7 @@ function openMap() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => overlay.classList.add("visible"));
   });
+  trapFocus(overlay);
   document.getElementById("map-city-name").textContent = currentLocation.name;
   document.getElementById("map-layer-select").value = "temp_new";
 
@@ -1270,7 +1396,9 @@ function openMap() {
 
 function closeMap() {
   const overlay = document.getElementById("map-overlay");
+  if (!overlay.classList.contains("visible")) return;
   overlay.classList.remove("visible");
+  releaseFocus(overlay);
   setTimeout(() => overlay.classList.add("hidden"), 360);
 }
 
@@ -1298,6 +1426,7 @@ function openEmbed() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => overlay.classList.add("visible"));
   });
+  trapFocus(overlay);
   const base = window.location.href.split("?")[0];
   const src  = `${base}?city=${encodeURIComponent(currentLocation.name)}&lat=${currentLocation.lat}&lon=${currentLocation.lon}`;
   document.getElementById("embed-code").value =
@@ -1306,7 +1435,9 @@ function openEmbed() {
 
 function closeEmbed() {
   const overlay = document.getElementById("embed-overlay");
+  if (!overlay.classList.contains("visible")) return;
   overlay.classList.remove("visible");
+  releaseFocus(overlay);
   setTimeout(() => overlay.classList.add("hidden"), 360);
 }
 
@@ -1347,8 +1478,6 @@ if ("serviceWorker" in navigator) {
 
 // ═══════════════════════════════════════════════════════════════════
 // RULE-BASED "AI" NATURAL LANGUAGE SUMMARY
-// No external API — instant, free, deterministic. Reads current
-// conditions and composes a natural one-line human sentence.
 // ═══════════════════════════════════════════════════════════════════
 function generateAISummary(data) {
   const el = document.getElementById("ai-summary");
@@ -1362,7 +1491,6 @@ function generateAISummary(data) {
   const hour     = new Date((data.dt + data.timezone) * 1000).getUTCHours();
   const partOfDay = hour < 6 ? "early morning" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 20 ? "evening" : "night";
 
-  // Temperature descriptor
   let tempWord;
   if      (feels >= 38) tempWord = "scorching";
   else if (feels >= 32) tempWord = "hot";
@@ -1372,7 +1500,6 @@ function generateAISummary(data) {
   else if (feels >= 0)  tempWord = "cold";
   else                  tempWord = "freezing";
 
-  // Condition phrase
   const condPhrases = {
     Clear: "clear skies", Clouds: "cloudy skies", Rain: "rain",
     Drizzle: "light drizzle", Thunderstorm: "thunderstorms", Snow: "snowfall",
@@ -1382,20 +1509,16 @@ function generateAISummary(data) {
   };
   const condPhrase = condPhrases[condMain] || "changing conditions";
 
-  // Humidity clause
   let humidityClause = "";
   if (humidity >= 75)      humidityClause = ", feeling quite humid";
   else if (humidity <= 25) humidityClause = ", with dry air";
 
-  // Wind clause
   let windClause = "";
   if      (windKmh >= 40) windClause = " and gusty winds";
   else if (windKmh >= 20) windClause = " with a noticeable breeze";
 
-  // Build sentence
   let sentence = `Expect a ${tempWord} ${partOfDay} with ${condPhrase}${humidityClause}${windClause}.`;
 
-  // Add a practical suggestion
   let tip = "";
   if      (condMain === "Rain" || condMain === "Drizzle" || condMain === "Thunderstorm")
     tip = " Keep an umbrella handy.";
@@ -1463,7 +1586,9 @@ document.getElementById("voice-btn").addEventListener("click", () => {
 // ═══════════════════════════════════════════════════════════════════
 // HISTORICAL PATTERN INSIGHT — Open-Meteo free archive API
 // Compares today's temp to the same calendar date's average over
-// the past 10 years at this location. No API key needed.
+// the past 10 years, flags anomalies (ML #3), and trains a small
+// neural net client-side (TensorFlow.js) to predict next year's
+// value from the 10-year trend.
 // ═══════════════════════════════════════════════════════════════════
 let historyChartInstance = null;
 
@@ -1475,17 +1600,21 @@ function openHistory() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => overlay.classList.add("visible"));
   });
+  trapFocus(overlay);
 
   document.getElementById("history-city-name").textContent = currentLocation.name;
   document.getElementById("history-loading").classList.remove("hidden");
   document.getElementById("history-content").classList.add("hidden");
+  document.getElementById("history-nn-prediction").classList.add("hidden");
 
   fetchHistoricalData(currentLocation.lat, currentLocation.lon);
 }
 
 function closeHistory() {
   const overlay = document.getElementById("history-overlay");
+  if (!overlay.classList.contains("visible")) return;
   overlay.classList.remove("visible");
+  releaseFocus(overlay);
   setTimeout(() => overlay.classList.add("hidden"), 360);
 }
 
@@ -1496,12 +1625,11 @@ function fetchHistoricalData(lat, lon) {
   const thisYear = today.getFullYear();
   const startYear = thisYear - 10;
 
-  // Fetch same calendar date across the last 10 years via Open-Meteo archive API
   const requests = [];
   for (let y = startYear; y < thisYear; y++) {
     const dateStr = `${y}-${month}-${day}`;
     requests.push(
-      fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_mean&timezone=auto`)
+      fetchWithRetry(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_mean&timezone=auto`)
         .then(r => r.json())
         .then(d => ({ year: y, temp: d.daily?.temperature_2m_mean?.[0] ?? null }))
         .catch(() => ({ year: y, temp: null }))
@@ -1515,8 +1643,13 @@ function fetchHistoricalData(lat, lon) {
       return;
     }
 
-    const avgTemp   = valid.reduce((s, r) => s + r.temp, 0) / valid.length;
     const todayTemp = lastData.main.temp;
+
+    // ML #3: Z-score anomaly detection (ml-utils.js, unit-tested)
+    const stats   = zScoreAnomaly(todayTemp, valid.map(r => r.temp));
+    const avgTemp = stats.mean;
+    const zScore  = stats.zScore;
+
     const todayDisplay = isCelsius ? todayTemp.toFixed(1) + "°C" : toF(todayTemp) + "°F";
     const avgDisplay   = isCelsius ? avgTemp.toFixed(1)   + "°C" : toF(avgTemp)   + "°F";
 
@@ -1536,16 +1669,6 @@ function fetchHistoricalData(lat, lon) {
       verdictEl.className = "history-verdict cooler";
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // TRADITIONAL ML #3 — Anomaly Detection (z-score)
-    // Flags today's temperature as statistically unusual if it falls
-    // more than 2 standard deviations from the 10-year mean for this
-    // calendar date — a standard outlier-detection technique.
-    // ─────────────────────────────────────────────────────────────
-    const variance = valid.reduce((s, r) => s + (r.temp - avgTemp) ** 2, 0) / valid.length;
-    const stdDev   = Math.sqrt(variance);
-    const zScore   = stdDev === 0 ? 0 : (todayTemp - avgTemp) / stdDev;
-
     const anomalyEl = document.getElementById("history-anomaly");
     if (Math.abs(zScore) >= 2) {
       anomalyEl.textContent = `⚠️ Statistically unusual for this date (z = ${zScore.toFixed(1)})`;
@@ -1554,11 +1677,66 @@ function fetchHistoricalData(lat, lon) {
       anomalyEl.classList.add("hidden");
     }
 
+    // Deep Learning: small neural net trained client-side (TensorFlow.js)
+    trainAndPredictNN(valid).then(nnPred => {
+      const nnEl = document.getElementById("history-nn-prediction");
+      if (!nnEl) return;
+      if (nnPred === null || isNaN(nnPred)) { nnEl.classList.add("hidden"); return; }
+      const displayVal = isCelsius ? nnPred.toFixed(1) + "°C" : toF(nnPred) + "°F";
+      nnEl.textContent = `🧠 Neural Net Prediction (next year): ${displayVal}`;
+      nnEl.classList.remove("hidden");
+    }).catch(err => {
+      console.warn("Neural net prediction failed:", err);
+      const nnEl = document.getElementById("history-nn-prediction");
+      if (nnEl) nnEl.classList.add("hidden");
+    });
+
     renderHistoryChart(valid, todayTemp);
 
     document.getElementById("history-loading").classList.add("hidden");
     document.getElementById("history-content").classList.remove("hidden");
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DEEP LEARNING — small neural network trained client-side with
+// TensorFlow.js on this location's 10-year same-date history.
+// Architecture: 1 input (normalized year) → 8 ReLU hidden units →
+// 1 linear output (predicted temperature). Trained with Adam for
+// 200 epochs on ~10 data points — intentionally tiny, since the goal
+// is demonstrating an in-browser training loop, not production-grade
+// forecasting accuracy.
+// ─────────────────────────────────────────────────────────────────────
+async function trainAndPredictNN(yearData) {
+  if (typeof tf === "undefined" || yearData.length < 3) return null;
+
+  const years = yearData.map(r => r.year);
+  const temps = yearData.map(r => r.temp);
+  const minYear = Math.min(...years);
+  const maxYear = Math.max(...years);
+  const range = (maxYear - minYear) || 1;
+
+  const xs = tf.tensor2d(years.map(y => [(y - minYear) / range]));
+  const ys = tf.tensor2d(temps.map(t => [t]));
+
+  const model = tf.sequential();
+  model.add(tf.layers.dense({ units: 8, activation: "relu", inputShape: [1] }));
+  model.add(tf.layers.dense({ units: 1 }));
+  model.compile({ optimizer: tf.train.adam(0.05), loss: "meanSquaredError" });
+
+  await model.fit(xs, ys, { epochs: 200, verbose: 0 });
+
+  const nextNorm   = (maxYear + 1 - minYear) / range;
+  const predTensor = model.predict(tf.tensor2d([[nextNorm]]));
+  const predArray  = await predTensor.data();
+  const value      = predArray[0];
+
+  xs.dispose();
+  ys.dispose();
+  predTensor.dispose();
+  model.dispose();
+
+  return value;
 }
 
 function renderHistoryChart(yearData, todayTemp) {
@@ -1610,8 +1788,3 @@ function renderHistoryChart(yearData, todayTemp) {
 
 document.getElementById("fab-history").addEventListener("click", openHistory);
 document.getElementById("history-close-btn").addEventListener("click", closeHistory);
-
-// Extend Escape key handler to also close history overlay
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeHistory();
-});

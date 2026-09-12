@@ -5,6 +5,14 @@
         <meta name="author" content="Tanishq Vijay"/>
         <meta charset="UTF-8"/>
         <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <!-- Apply saved theme before first paint to avoid a flash of the wrong theme -->
+        <script>
+          (function () {
+            var saved = localStorage.getItem("theme");
+            var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+            document.documentElement.setAttribute("data-theme", theme);
+          })();
+        </script>
         <title>Weather Forecast</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,10 +27,16 @@
         <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231e4db7'/><text y='.9em' font-size='75' x='12'>🌤️</text></svg>"/>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+        <script src="ml-utils.js"></script>
+        <script src="idb.js"></script>
         <script src="Project.js" defer></script>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌤️</text></svg>">
     </head>
     <body>
+
+        <!-- Screen-reader-only live region: announces weather updates -->
+        <div id="aria-live-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
         <!-- Lava lamp animated background -->
         <div id="lava-bg">
@@ -45,9 +59,9 @@
         </div>
 
         <!-- Error toast -->
-        <div id="error-box">
+        <div id="error-box" role="alert" aria-live="assertive">
             <span id="error-message"></span>
-            <button id="close-error" onclick="hideError()">&times;</button>
+            <button id="close-error" onclick="hideError()" aria-label="Dismiss error">&times;</button>
         </div>
 
         <!-- Saved locations bar -->
@@ -62,17 +76,19 @@
             <div class="card">
                 <div class="card-header">
                     <h2>Today's Weather</h2>
-                    <!-- Unit toggle -->
-                    <button id="unit-toggle" title="Switch to Fahrenheit">°F</button>
+                    <div class="header-buttons">
+                        <button id="theme-toggle" title="Toggle light/dark theme" aria-label="Toggle light or dark theme">🌙</button>
+                        <button id="unit-toggle" title="Switch to Fahrenheit">°F</button>
+                    </div>
                 </div>
 
                 <!-- Search -->
                 <div class="search">
                     <div class="search-input-wrap">
-                        <input type="text" class="search-bar" placeholder="Search Location" autocomplete="off">
-                        <ul class="suggestions-list hidden" id="suggestions-list"></ul>
+                        <input type="text" class="search-bar" placeholder="Search Location" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-list"/>
+                        <ul class="suggestions-list hidden" id="suggestions-list" role="listbox"></ul>
                     </div>
-                    <button title="Search">
+                    <button title="Search" aria-label="Search">
                         <svg stroke="currentColor" fill="currentColor" stroke-width="0"
                             viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                             <path d="M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712
@@ -83,7 +99,7 @@
                             188s116.1 23.2 158.4 65.6S636 352.2 636 412s-23.3 116.1-65.6 158.4z"/>
                         </svg>
                     </button>
-                    <button title="Geolocate" id="geolocation-button">
+                    <button title="Geolocate" id="geolocation-button" aria-label="Use my current location">
                         <svg stroke="currentColor" fill="currentColor" stroke-width="0"
                             viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                             <path fill="none" stroke="#000" stroke-width="2"
@@ -93,9 +109,9 @@
                         </svg>
                     </button>
                     <!-- Pin current city -->
-                    <button id="pin-button" title="Pin this city to saved locations">📌</button>
+                    <button id="pin-button" title="Pin this city to saved locations" aria-label="Pin this city to saved locations">📌</button>
                     <!-- Voice search -->
-                    <button id="voice-btn" title="Search by voice">
+                    <button id="voice-btn" title="Search by voice" aria-label="Search by voice">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -173,7 +189,7 @@
                     <h1 class="temp" title="Current temperature">0°C</h1>
                     <h5 class="feels_like" title="Apparent temperature">Feels like 0°C</h5>
                     <div class="high-low" title="Today's high and low">H: --°  |  L: --°</div>
-                    <button id="share-btn" title="Share this weather">
+                    <button id="share-btn" title="Share this weather" aria-label="Share this weather">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="18" cy="5"  r="3"/>
                             <circle cx="6"  cy="12" r="3"/>
@@ -200,7 +216,7 @@
                 <div class="chart-panel-inner">
                     <div class="chart-panel-header">
                         <span class="chart-panel-title">24h Forecast</span>
-                        <button id="chart-close-btn" title="Close chart">✕</button>
+                        <button id="chart-close-btn" title="Close chart" aria-label="Close 24h forecast chart">✕</button>
                     </div>
                     <div class="chart-panel-body">
                         <canvas id="hourly-chart"></canvas>
@@ -211,27 +227,27 @@
         </div><!-- /.container -->
 
         <!-- Alert banner — above container, shows on extreme conditions -->
-        <div id="alert-banner" class="hidden">
+        <div id="alert-banner" class="hidden" role="alert" aria-live="assertive">
             <div id="alert-items"></div>
-            <button id="alert-close" title="Dismiss alerts">✕</button>
+            <button id="alert-close" title="Dismiss alerts" aria-label="Dismiss alerts">✕</button>
         </div>
 
         <!-- Offline banner — fixed bottom -->
-        <div id="offline-banner" class="hidden">
+        <div id="offline-banner" class="hidden" role="status">
             📡 You're offline — showing last loaded data
         </div>
 
         <!-- Floating action buttons — bottom right -->
         <div id="fab-group">
-            <button id="fab-embed" title="Get embed code">📋</button>
-            <button id="fab-history" title="Historical weather insight">📊</button>
-            <button id="fab-map"   title="Open weather map">🗺</button>
+            <button id="fab-embed" title="Get embed code" aria-label="Get embed code">📋</button>
+            <button id="fab-history" title="Historical weather insight" aria-label="Open historical weather insight">📊</button>
+            <button id="fab-map"   title="Open weather map" aria-label="Open weather map">🗺</button>
         </div>
 
         <!-- Fullscreen weather map overlay -->
-        <div id="map-overlay" class="overlay-fullscreen hidden">
+        <div id="map-overlay" class="overlay-fullscreen hidden" role="dialog" aria-modal="true" aria-labelledby="map-overlay-title">
             <div class="overlay-topbar">
-                <span class="overlay-title">🗺 Weather Map — <span id="map-city-name">—</span></span>
+                <span class="overlay-title" id="map-overlay-title">🗺 Weather Map — <span id="map-city-name">—</span></span>
                 <div class="overlay-controls">
                     <label for="map-layer-select" class="sr-only">Weather layer</label>
                     <select id="map-layer-select" title="Select weather map layer" aria-label="Weather map layer">
@@ -241,18 +257,18 @@
                         <option value="wind_new">Wind Speed</option>
                         <option value="pressure_new">Pressure</option>
                     </select>
-                    <button id="map-close-btn" class="overlay-close">✕ Close</button>
+                    <button id="map-close-btn" class="overlay-close" aria-label="Close weather map">✕ Close</button>
                 </div>
             </div>
             <div id="map-container"></div>
         </div>
 
         <!-- Embed code modal overlay -->
-        <div id="embed-overlay" class="overlay-fullscreen hidden">
+        <div id="embed-overlay" class="overlay-fullscreen hidden" role="dialog" aria-modal="true" aria-labelledby="embed-overlay-title">
             <div class="modal-card">
                 <div class="modal-header">
-                    <span>📋 Embed Weather Widget</span>
-                    <button id="embed-close-btn" class="overlay-close">✕</button>
+                    <span id="embed-overlay-title">📋 Embed Weather Widget</span>
+                    <button id="embed-close-btn" class="overlay-close" aria-label="Close embed code dialog">✕</button>
                 </div>
                 <div class="modal-body">
                     <p>Paste this into any webpage to show live weather for <strong id="embed-city-name">this city</strong>:</p>
@@ -267,11 +283,11 @@
         </div>
 
         <!-- Historical pattern insight overlay -->
-        <div id="history-overlay" class="overlay-fullscreen hidden">
+        <div id="history-overlay" class="overlay-fullscreen hidden" role="dialog" aria-modal="true" aria-labelledby="history-overlay-title">
             <div class="modal-card history-card">
                 <div class="modal-header">
-                    <span>📊 Historical Pattern — <span id="history-city-name">—</span></span>
-                    <button id="history-close-btn" class="overlay-close">✕</button>
+                    <span id="history-overlay-title">📊 Historical Pattern — <span id="history-city-name">—</span></span>
+                    <button id="history-close-btn" class="overlay-close" aria-label="Close historical pattern dialog">✕</button>
                 </div>
                 <div class="modal-body">
                     <div id="history-loading" class="history-loading">
@@ -292,6 +308,7 @@
                         </div>
                         <div id="history-verdict" class="history-verdict"></div>
                         <div id="history-anomaly" class="history-anomaly hidden"></div>
+                        <div id="history-nn-prediction" class="history-nn hidden" title="Predicted using a small neural network trained client-side on this location's 10-year history"></div>
                         <canvas id="history-chart"></canvas>
                     </div>
                 </div>

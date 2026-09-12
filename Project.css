@@ -1,10 +1,51 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { background-color: #060f1f; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   THEME VARIABLES — dark (default) and light overrides.
+   Scope: the UI chrome (cards, panels, modals, chips, text).
+   NOT themed: the lava-lamp background, weather particles, and the
+   time-of-day box tints (dawn/day/dusk/night) — those stay
+   atmospheric/dark by design regardless of light/dark UI mode.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+    --bg-primary:     #060f1f;
+    --card-bg:        rgba(40,39,39,0.4);
+    --panel-bg:       rgba(30,30,40,0.88);
+    --modal-bg:       rgba(16,24,48,0.98);
+    --chip-bg:        rgba(255,255,255,0.12);
+    --suggestions-bg: rgba(30,30,30,0.97);
+    --text-primary:   #ffffff;
+    --text-muted:     rgba(255,255,255,0.6);
+    --border-color:   rgba(255,255,255,0.15);
+    --input-bg:       lightgray;
+}
+html[data-theme="light"] {
+    --bg-primary:     #e9eef8;
+    --card-bg:        rgba(255,255,255,0.65);
+    --panel-bg:       rgba(255,255,255,0.85);
+    --modal-bg:       rgba(255,255,255,0.97);
+    --chip-bg:        rgba(20,30,60,0.08);
+    --suggestions-bg: rgba(255,255,255,0.98);
+    --text-primary:   #16213a;
+    --text-muted:     rgba(20,30,60,0.6);
+    --border-color:   rgba(20,30,60,0.15);
+    --input-bg:       #f0f2f8;
+}
+
+html { background-color: var(--bg-primary); }
 .sr-only {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;
     clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+
+/* ── Accessibility: visible focus ring for keyboard navigation ────── */
+:focus-visible {
+    outline: 2px solid rgba(120,170,255,0.9);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
 body {
     display: flex;
     flex-direction: column;
@@ -15,6 +56,7 @@ body {
     padding: 24px 0;
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow-x: hidden;
+    color: var(--text-primary);
 }
 #lava-bg {
     position: fixed; inset: 0; z-index: 1;
@@ -151,36 +193,36 @@ body {
     display: flex; align-items: center; gap: 8px;
     flex-wrap: wrap; justify-content: center;
     margin-bottom: 10px; padding: 6px 14px;
-    background: rgba(255,255,255,0.08);
+    background: var(--card-bg);
     border-radius: 20px; -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
 }
 .saved-label {
     font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: rgba(255,255,255,0.5);
+    letter-spacing: 0.1em; color: var(--text-muted);
 }
 .saved-chip {
     display: flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,0.12); border-radius: 14px;
-    padding: 3px 10px 3px 12px; cursor: pointer; color: white;
+    background: var(--chip-bg); border-radius: 14px;
+    padding: 3px 10px 3px 12px; cursor: pointer; color: var(--text-primary);
     font-size: 0.82rem; transition: background 0.15s;
 }
 .saved-chip:hover { background: rgba(255,255,255,0.22); }
 .saved-chip span  { cursor: pointer; }
 .chip-remove {
-    background: none; border: none; color: rgba(255,255,255,0.6);
+    background: none; border: none; color: var(--text-muted);
     font-size: 1rem; cursor: pointer; line-height: 1; padding: 0 2px;
     transition: color 0.15s;
 }
-.chip-remove:hover { color: white; }
+.chip-remove:hover { color: var(--text-primary); }
 .card {
-    color: white;
+    color: var(--text-primary);
     box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
-    background: rgba(40,39,39,0.4);
+    background: var(--card-bg);
     padding: 20px;
     border-radius: 20px 0 0 20px;
     width: 100%; max-width: 360px;
-    display: flex; flex-direction: column; 
+    display: flex; flex-direction: column;
 }
 .card-header {
     position: relative;
@@ -188,11 +230,14 @@ body {
     align-items: center; margin-bottom: 10px;
 }
 .card-header h2 { font-size: 1.1rem; text-align: center; }
-#unit-toggle {
+.header-buttons {
     position: absolute; right: 0;
+    display: flex; align-items: center; gap: 6px;
+}
+#theme-toggle, #unit-toggle {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.35);
-    color: white; border-radius: 14px;
+    color: var(--text-primary); border-radius: 14px;
     padding: 4px 14px; cursor: pointer;
     font-size: 0.85rem; font-weight: 700;
     transition: background 0.2s;
@@ -200,7 +245,7 @@ body {
     display: inline-flex; align-items: center; justify-content: center;
     line-height: 1;
 }
-#unit-toggle:hover { background: rgba(255,255,255,0.28); }
+#theme-toggle:hover, #unit-toggle:hover { background: rgba(255,255,255,0.28); }
 .search { position: relative; display: flex; align-items: center; gap: 4px; justify-content: center; }
 .search-input-wrap {
     position: relative;
@@ -210,13 +255,13 @@ body {
 .search-bar {
     border: none; border-radius: 10px;
     height: 28px; padding: 0 8px; text-align: center;
-    background: lightgray;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--input-bg);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
     transition: background 0.3s, color 0.3s, border 0.3s;
     flex: 1; width: 100%;
 }
 .search-bar.display-mode {
-    background: rgba(255,255,255,0.15); color: white;
+    background: rgba(255,255,255,0.15); color: var(--text-primary);
     font-weight: 600; border: 1px solid rgba(255,255,255,0.35); cursor: pointer;
 }
 .search-bar.display-mode:hover { background: rgba(255,255,255,0.25); }
@@ -331,10 +376,10 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
-    background: rgba(30,30,40,0.88);
+    background: var(--panel-bg);
     border-radius: 0 20px 20px 0;
     box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
-    color: white;
+    color: var(--text-primary);
     position: relative;
     z-index: 3;
 }
@@ -398,19 +443,20 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .suggestions-list {
     position: absolute; top: 100%; left: 0; right: 0;
-    background: rgba(30,30,30,0.97); border-radius: 0 0 10px 10px;
+    background: var(--suggestions-bg); border-radius: 0 0 10px 10px;
     list-style: none; margin: 4px 0 0; padding: 0;
     z-index: 1000; max-height: 220px; overflow-y: auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-align: left;
 }
 .suggestions-list li {
-    padding: 10px 14px; cursor: pointer; color: white;
+    padding: 10px 14px; cursor: pointer; color: var(--text-primary);
     font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.07);
     transition: background 0.15s;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .suggestions-list li:last-child { border-bottom: none; }
-.suggestions-list li:hover { background: rgba(255,255,255,0.15); }
+.suggestions-list li:hover,
+.suggestions-list li.suggestion-active { background: rgba(255,255,255,0.15); }
 .suggestions-list.hidden { display: none; }
 @media (max-width: 700px) {
     .container  { flex-direction: column; width: 100%; }
@@ -438,18 +484,6 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .compass {
     width: 44px; height: 44px; flex-shrink: 0; cursor: help;
 }
-
-/* ── Temp trend row + arrow ──────────────────────────────────────── */
-.temp-row {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.trend-arrow {
-    font-size: 1.6rem; font-weight: 700; line-height: 1;
-    transition: color 0.3s;
-}
-.trend-up     { color: #ff7043; }
-.trend-down   { color: #64b5f6; }
-.trend-stable { color: rgba(255,255,255,0.45); font-size: 1.2rem; }
 
 /* ── Share button ────────────────────────────────────────────────── */
 #share-btn {
@@ -580,11 +614,11 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     align-items: center; justify-content: center;
 }
 .modal-card {
-    background: rgba(16,24,48,0.98);
+    background: var(--modal-bg);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 20px; padding: 36px 40px;
     width: 92%; max-width: 700px;
-    color: white;
+    color: var(--text-primary);
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 .modal-header {
@@ -708,7 +742,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 #history-chart { width: 100% !important; height: 260px !important; }
 #history-content.hidden { display: none; }
 
-/* ── ML #1: Forecast trend badge (linear regression) ─────────────── */
+/* ── ML #1: Forecast trend badge (linear regression, via Web Worker) */
 .forecast-trend {
     margin-top: 8px;
     font-size: 0.78rem;
@@ -722,14 +756,14 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .trend-cool-badge   { color: #64b5f6; }
 .trend-stable-badge { color: rgba(255,255,255,0.6); }
 
-/* ── ML #2: Similar-weather pinned city highlight ────────────────── */
+/* ── ML #2: Similar-weather pinned city highlight (K-Means) ───────── */
 .saved-chip.chip-similar {
     border: 1.5px solid rgba(255,210,90,0.8);
     background: rgba(255,210,90,0.12);
     box-shadow: 0 0 8px rgba(255,210,90,0.25);
 }
 
-/* ── ML #3: Anomaly detection badge ──────────────────────────────── */
+/* ── ML #3: Anomaly detection badge (Z-Score) ─────────────────────── */
 .history-anomaly {
     text-align: center;
     font-size: 0.82rem;
@@ -742,3 +776,17 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     margin: -6px 0 14px;
 }
 .history-anomaly.hidden { display: none; }
+
+/* ── DL: Neural net prediction badge (TensorFlow.js) ──────────────── */
+.history-nn {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #b39ddb;
+    background: rgba(179,157,219,0.1);
+    border: 1px solid rgba(179,157,219,0.35);
+    border-radius: 10px;
+    padding: 9px 14px;
+    margin: 0 0 16px;
+}
+.history-nn.hidden { display: none; }

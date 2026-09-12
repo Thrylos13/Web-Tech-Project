@@ -1,0 +1,12 @@
+{
+  "name": "weather-forecast-app",
+  "version": "1.0.0",
+  "description": "Live weather dashboard with traditional ML (regression, k-means, anomaly detection) and a client-side neural net forecast (TensorFlow.js)",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
+  }
+}
