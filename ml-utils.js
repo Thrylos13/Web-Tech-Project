@@ -1,12 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════
-// ML-UTILS.JS — pure, dependency-free ML/stat functions
-// Works three ways with zero changes:
-//   1. Classic <script> in the browser main thread  → attaches to window
-//   2. importScripts() inside a Web Worker           → attaches to self
-//   3. require() from Node.js (Vitest test suite)    → module.exports
-// Being pure functions (no DOM, no fetch, no global state) is what
-// makes them independently unit-testable.
-// ═══════════════════════════════════════════════════════════════════
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory();
@@ -15,9 +6,6 @@
   }
 })(typeof self !== "undefined" ? self : this, function () {
 
-  // ── Traditional ML #1: Simple Linear Regression (least squares) ──
-  // Fits y = mx + b to a set of {x, y} points. Used to detect whether
-  // a short-term forecast trend is warming, cooling, or stable.
   function linearRegression(points) {
     const n = points.length;
     if (n < 2) return { slope: 0, intercept: points[0] ? points[0].y : 0 };
@@ -31,10 +19,6 @@
     return { slope: slope, intercept: intercept };
   }
 
-  // ── Traditional ML #2: K-Means Clustering ──────────────────────────
-  // Clusters points (objects with named numeric fields) into k groups.
-  // Normalizes each dimension to 0-1 first so fields on different
-  // scales (temp in °C, wind in km/h) contribute equally.
   function kMeans(points, k) {
     if (points.length <= k) return points.map((_, i) => i);
     const dims = Object.keys(points[0]).filter(key => typeof points[0][key] === "number");
@@ -76,10 +60,6 @@
     return assignments;
   }
 
-  // ── Traditional ML #3: Z-Score Anomaly Detection ──────────────────
-  // Given a value and a population of past values, computes how many
-  // standard deviations away the value sits. |z| >= 2 is the standard
-  // statistical threshold for flagging an outlier.
   function zScoreAnomaly(value, population) {
     const n = population.length;
     if (n === 0) return { mean: value, stdDev: 0, zScore: 0 };
@@ -90,7 +70,6 @@
     return { mean: mean, stdDev: stdDev, zScore: zScore };
   }
 
-  // ── Unit conversions (pure, testable versions) ────────────────────
   function celsiusToFahrenheit(c) {
     return Math.round((c * 9 / 5 + 32) * 10) / 10;
   }
