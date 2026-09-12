@@ -508,12 +508,15 @@ function renderForecastStrip() {
 
   // ── 5-day strip: skip today, show next 5 days
   const futureDates = dates.slice(1, 6);
-  futureDates.forEach(date => {
+  const regressionPoints = []; // {x: dayIndex, y: avgTemp} for linear regression
+
+  futureDates.forEach((date, idx) => {
     const entries = byDay[date];
 
     // True H/L: max of temp_max and min of temp_min across ALL entries that day
     const hi = Math.max(...entries.map(e => e.main.temp_max));
     const lo = Math.min(...entries.map(e => e.main.temp_min));
+    regressionPoints.push({ x: idx, y: (hi + lo) / 2 });
 
     // Icon + day name: use the noon-closest entry for representative conditions
     const noon = entries.reduce((best, e) => {
@@ -536,6 +539,48 @@ function renderForecastStrip() {
     `;
     strip.appendChild(card);
   });
+
+  renderForecastTrend(regressionPoints);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TRADITIONAL ML #1 — Simple Linear Regression (least squares)
+// Fits a straight line to the next 5 days' average temps to detect
+// whether the short-term trend is warming, cooling, or stable.
+// Pure JS, no library — y = mx + b via the standard least-squares formula.
+// ─────────────────────────────────────────────────────────────────────
+function linearRegression(points) {
+  const n = points.length;
+  if (n < 2) return { slope: 0, intercept: points[0]?.y || 0 };
+  const sumX  = points.reduce((s, p) => s + p.x, 0);
+  const sumY  = points.reduce((s, p) => s + p.y, 0);
+  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+  const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function renderForecastTrend(points) {
+  const el = document.getElementById("forecast-trend");
+  if (!el || points.length < 2) return;
+
+  const { slope } = linearRegression(points);
+  const slopeDisplay = isCelsius ? slope : slope * 9 / 5; // convert °C/day slope to °F/day
+  const absSlope = Math.abs(slopeDisplay);
+
+  let icon, label, cls;
+  if (absSlope < 0.4) {
+    icon = "➡️"; label = "Stable temperatures expected"; cls = "trend-stable-badge";
+  } else if (slopeDisplay > 0) {
+    icon = "📈"; label = `Warming trend: +${absSlope.toFixed(1)}°${isCelsius ? "C" : "F"}/day`; cls = "trend-warm-badge";
+  } else {
+    icon = "📉"; label = `Cooling trend: -${absSlope.toFixed(1)}°${isCelsius ? "C" : "F"}/day`; cls = "trend-cool-badge";
+  }
+
+  el.textContent = `${icon} ${label}`;
+  el.className = "forecast-trend " + cls;
+  el.title = "Linear regression fit across the next 5 days' average temperatures";
 }
 
 // Re-render just the temperature text when unit is toggled
@@ -544,6 +589,12 @@ function renderForecastTemps() {
     card.querySelector(".fc-hi").textContent = fmtTemp(parseFloat(card.dataset.hi));
     card.querySelector(".fc-lo").textContent = fmtTemp(parseFloat(card.dataset.lo));
   });
+  // Recompute regression points from stored card data so trend badge updates units too
+  const points = Array.from(document.querySelectorAll(".forecast-card")).map((card, idx) => ({
+    x: idx,
+    y: (parseFloat(card.dataset.hi) + parseFloat(card.dataset.lo)) / 2,
+  }));
+  renderForecastTrend(points);
   // Only rebuild chart if panel is currently visible
   if (chartPanel.classList.contains("open")) renderHourly();
 }
@@ -689,6 +740,98 @@ function renderHourly() {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// TRADITIONAL ML #2 — K-Means Clustering ("similar weather cities")
+// Clusters the current city + pinned cities by {temp, humidity, windKmh}
+// so pinned cities sharing a cluster with the current city get highlighted
+// as having genuinely similar weather right now — not just similar names.
+// Pure JS k-means, no library.
+// ─────────────────────────────────────────────────────────────────────
+function kMeans(points, k) {
+  if (points.length <= k) return points.map((_, i) => i); // each its own cluster
+  // Normalize each dimension to 0-1 so temp/humidity/wind contribute equally
+  const dims = ["temp", "humidity", "wind"];
+  const ranges = dims.map(d => {
+    const vals = points.map(p => p[d]);
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  });
+  const norm = points.map(p =>
+    dims.map((d, i) => {
+      const { min, max } = ranges[i];
+      return max === min ? 0 : (p[d] - min) / (max - min);
+    })
+  );
+
+  // Init centroids as k evenly spaced points from the normalized data
+  let centroids = Array.from({ length: k }, (_, i) =>
+    norm[Math.floor((i * norm.length) / k)]
+  );
+
+  let assignments = new Array(norm.length).fill(0);
+  for (let iter = 0; iter < 15; iter++) {
+    // Assign step
+    assignments = norm.map(p => {
+      let best = 0, bestDist = Infinity;
+      centroids.forEach((c, ci) => {
+        const dist = dims.reduce((s, _, di) => s + (p[di] - c[di]) ** 2, 0);
+        if (dist < bestDist) { bestDist = dist; best = ci; }
+      });
+      return best;
+    });
+    // Update step
+    centroids = centroids.map((c, ci) => {
+      const members = norm.filter((_, i) => assignments[i] === ci);
+      if (!members.length) return c;
+      return dims.map((_, di) => members.reduce((s, m) => s + m[di], 0) / members.length);
+    });
+  }
+  return assignments;
+}
+
+// Lightweight current-conditions fetch (used only for clustering, not full display)
+function fetchQuickWeather(lat, lon) {
+  return fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`)
+    .then(r => r.json())
+    .then(d => ({ temp: d.main.temp, humidity: d.main.humidity, wind: d.wind.speed * 3.6 }))
+    .catch(() => null);
+}
+
+function updateSimilarCities() {
+  if (!currentLocation || !lastData || savedLocations.length === 0) return;
+
+  const currentProfile = {
+    temp: lastData.main.temp,
+    humidity: lastData.main.humidity,
+    wind: lastData.wind.speed * 3.6,
+  };
+
+  Promise.all(savedLocations.map(loc => fetchQuickWeather(loc.lat, loc.lon)))
+    .then(profiles => {
+      const points = [currentProfile, ...profiles.filter(p => p)];
+      const validIndices = profiles.map((p, i) => p ? i : null).filter(i => i !== null);
+      if (points.length < 2) return;
+
+      const k = Math.min(3, points.length);
+      const clusters = kMeans(points, k);
+      const currentCluster = clusters[0];
+
+      // Reset all chips, then highlight ones sharing the current cluster
+      const chips = savedChips.querySelectorAll(".saved-chip");
+      validIndices.forEach((origIdx, pointsIdx) => {
+        const chip = chips[origIdx];
+        if (!chip) return;
+        const chipCluster = clusters[pointsIdx + 1]; // +1 offset since index 0 is current city
+        if (chipCluster === currentCluster) {
+          chip.classList.add("chip-similar");
+          chip.title = `Similar weather to ${currentLocation.name} right now`;
+        } else {
+          chip.classList.remove("chip-similar");
+          chip.removeAttribute("title");
+        }
+      });
+    });
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // SAVED LOCATIONS — persisted in localStorage
 // ═══════════════════════════════════════════════════════════════════
@@ -727,6 +870,7 @@ pinButton.addEventListener("click", function () {
   savedLocations.push(currentLocation);
   localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
   renderSavedChips();
+  updateSimilarCities();
 });
 
 renderSavedChips(); // render on page load from localStorage
@@ -803,6 +947,12 @@ let weather = {
 
     // Condition-based alerts
     generateAlerts(data);
+
+    // AI-style natural language summary (rule-based)
+    generateAISummary(data);
+
+    // K-means: refresh which pinned cities have similar weather right now
+    updateSimilarCities();
 
     // Background, AQI+UV, Forecast
     setBackground(name, country);
@@ -1194,3 +1344,274 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.warn("SW not registered:", err));
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE-BASED "AI" NATURAL LANGUAGE SUMMARY
+// No external API — instant, free, deterministic. Reads current
+// conditions and composes a natural one-line human sentence.
+// ═══════════════════════════════════════════════════════════════════
+function generateAISummary(data) {
+  const el = document.getElementById("ai-summary");
+  if (!el) return;
+
+  const temp     = data.main.temp;
+  const feels    = data.main.feels_like;
+  const humidity = data.main.humidity;
+  const windKmh  = data.wind.speed * 3.6;
+  const condMain = data.weather[0].main;
+  const hour     = new Date((data.dt + data.timezone) * 1000).getUTCHours();
+  const partOfDay = hour < 6 ? "early morning" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 20 ? "evening" : "night";
+
+  // Temperature descriptor
+  let tempWord;
+  if      (feels >= 38) tempWord = "scorching";
+  else if (feels >= 32) tempWord = "hot";
+  else if (feels >= 25) tempWord = "warm";
+  else if (feels >= 18) tempWord = "mild";
+  else if (feels >= 10) tempWord = "cool";
+  else if (feels >= 0)  tempWord = "cold";
+  else                  tempWord = "freezing";
+
+  // Condition phrase
+  const condPhrases = {
+    Clear: "clear skies", Clouds: "cloudy skies", Rain: "rain",
+    Drizzle: "light drizzle", Thunderstorm: "thunderstorms", Snow: "snowfall",
+    Mist: "misty conditions", Fog: "foggy conditions", Haze: "hazy skies",
+    Smoke: "smoky air", Dust: "dusty conditions", Sand: "sandy winds",
+    Ash: "ashy skies", Squall: "strong squalls", Tornado: "a tornado warning",
+  };
+  const condPhrase = condPhrases[condMain] || "changing conditions";
+
+  // Humidity clause
+  let humidityClause = "";
+  if (humidity >= 75)      humidityClause = ", feeling quite humid";
+  else if (humidity <= 25) humidityClause = ", with dry air";
+
+  // Wind clause
+  let windClause = "";
+  if      (windKmh >= 40) windClause = " and gusty winds";
+  else if (windKmh >= 20) windClause = " with a noticeable breeze";
+
+  // Build sentence
+  let sentence = `Expect a ${tempWord} ${partOfDay} with ${condPhrase}${humidityClause}${windClause}.`;
+
+  // Add a practical suggestion
+  let tip = "";
+  if      (condMain === "Rain" || condMain === "Drizzle" || condMain === "Thunderstorm")
+    tip = " Keep an umbrella handy.";
+  else if (feels >= 35)
+    tip = " Stay hydrated and avoid prolonged sun exposure.";
+  else if (feels <= 5)
+    tip = " Bundle up before heading out.";
+  else if (condMain === "Snow")
+    tip = " Roads may be slippery.";
+  else if (windKmh >= 40)
+    tip = " Secure loose outdoor items.";
+
+  el.textContent = sentence + tip;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VOICE SEARCH — Web Speech API
+// ═══════════════════════════════════════════════════════════════════
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.addEventListener("result", e => {
+    const spoken = e.results[0][0].transcript.trim();
+    searchBar.readOnly = false;
+    searchBar.classList.remove("display-mode");
+    searchBar.value = spoken;
+    hideSuggestions();
+    weather.search();
+  });
+
+  recognition.addEventListener("end", () => {
+    isListening = false;
+    document.getElementById("voice-btn").classList.remove("listening");
+  });
+
+  recognition.addEventListener("error", e => {
+    isListening = false;
+    document.getElementById("voice-btn").classList.remove("listening");
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      showError("Microphone access denied.");
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
+      showError("Voice search failed — try again.");
+    }
+  });
+} else {
+  const vb = document.getElementById("voice-btn");
+  if (vb) vb.style.display = "none";
+}
+
+document.getElementById("voice-btn").addEventListener("click", () => {
+  if (!recognition) { showError("Voice search isn't supported in this browser."); return; }
+  if (isListening) { recognition.stop(); return; }
+  isListening = true;
+  document.getElementById("voice-btn").classList.add("listening");
+  try { recognition.start(); } catch (e) { /* already running */ }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// HISTORICAL PATTERN INSIGHT — Open-Meteo free archive API
+// Compares today's temp to the same calendar date's average over
+// the past 10 years at this location. No API key needed.
+// ═══════════════════════════════════════════════════════════════════
+let historyChartInstance = null;
+
+function openHistory() {
+  if (!currentLocation || !lastData) { showError("Search a city first!"); return; }
+
+  const overlay = document.getElementById("history-overlay");
+  overlay.classList.remove("hidden");
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => overlay.classList.add("visible"));
+  });
+
+  document.getElementById("history-city-name").textContent = currentLocation.name;
+  document.getElementById("history-loading").classList.remove("hidden");
+  document.getElementById("history-content").classList.add("hidden");
+
+  fetchHistoricalData(currentLocation.lat, currentLocation.lon);
+}
+
+function closeHistory() {
+  const overlay = document.getElementById("history-overlay");
+  overlay.classList.remove("visible");
+  setTimeout(() => overlay.classList.add("hidden"), 360);
+}
+
+function fetchHistoricalData(lat, lon) {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day   = String(today.getDate()).padStart(2, "0");
+  const thisYear = today.getFullYear();
+  const startYear = thisYear - 10;
+
+  // Fetch same calendar date across the last 10 years via Open-Meteo archive API
+  const requests = [];
+  for (let y = startYear; y < thisYear; y++) {
+    const dateStr = `${y}-${month}-${day}`;
+    requests.push(
+      fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_mean&timezone=auto`)
+        .then(r => r.json())
+        .then(d => ({ year: y, temp: d.daily?.temperature_2m_mean?.[0] ?? null }))
+        .catch(() => ({ year: y, temp: null }))
+    );
+  }
+
+  Promise.all(requests).then(results => {
+    const valid = results.filter(r => r.temp !== null);
+    if (!valid.length) {
+      document.getElementById("history-loading").innerHTML = "Historical data unavailable for this location.";
+      return;
+    }
+
+    const avgTemp   = valid.reduce((s, r) => s + r.temp, 0) / valid.length;
+    const todayTemp = lastData.main.temp;
+    const todayDisplay = isCelsius ? todayTemp.toFixed(1) + "°C" : toF(todayTemp) + "°F";
+    const avgDisplay   = isCelsius ? avgTemp.toFixed(1)   + "°C" : toF(avgTemp)   + "°F";
+
+    document.getElementById("history-today-temp").textContent = todayDisplay;
+    document.getElementById("history-avg-temp").textContent   = avgDisplay;
+
+    const diff = todayTemp - avgTemp;
+    const verdictEl = document.getElementById("history-verdict");
+    if (Math.abs(diff) < 1) {
+      verdictEl.textContent = `Right around the 10-year average for this date.`;
+      verdictEl.className = "history-verdict normal";
+    } else if (diff > 0) {
+      verdictEl.textContent = `${Math.abs(diff).toFixed(1)}° warmer than the 10-year average for this date.`;
+      verdictEl.className = "history-verdict warmer";
+    } else {
+      verdictEl.textContent = `${Math.abs(diff).toFixed(1)}° cooler than the 10-year average for this date.`;
+      verdictEl.className = "history-verdict cooler";
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TRADITIONAL ML #3 — Anomaly Detection (z-score)
+    // Flags today's temperature as statistically unusual if it falls
+    // more than 2 standard deviations from the 10-year mean for this
+    // calendar date — a standard outlier-detection technique.
+    // ─────────────────────────────────────────────────────────────
+    const variance = valid.reduce((s, r) => s + (r.temp - avgTemp) ** 2, 0) / valid.length;
+    const stdDev   = Math.sqrt(variance);
+    const zScore   = stdDev === 0 ? 0 : (todayTemp - avgTemp) / stdDev;
+
+    const anomalyEl = document.getElementById("history-anomaly");
+    if (Math.abs(zScore) >= 2) {
+      anomalyEl.textContent = `⚠️ Statistically unusual for this date (z = ${zScore.toFixed(1)})`;
+      anomalyEl.classList.remove("hidden");
+    } else {
+      anomalyEl.classList.add("hidden");
+    }
+
+    renderHistoryChart(valid, todayTemp);
+
+    document.getElementById("history-loading").classList.add("hidden");
+    document.getElementById("history-content").classList.remove("hidden");
+  });
+}
+
+function renderHistoryChart(yearData, todayTemp) {
+  const canvas = document.getElementById("history-chart");
+  if (!canvas) return;
+  if (historyChartInstance) { historyChartInstance.destroy(); historyChartInstance = null; }
+
+  const labels = yearData.map(r => String(r.year));
+  const temps  = yearData.map(r => isCelsius ? r.temp : toF(r.temp));
+  labels.push("This Year");
+  temps.push(isCelsius ? todayTemp : toF(todayTemp));
+
+  const barColors = labels.map((l, i) =>
+    i === labels.length - 1 ? "rgba(255,180,80,0.9)" : "rgba(100,180,255,0.5)"
+  );
+
+  historyChartInstance = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Temp",
+        data: temps,
+        backgroundColor: barColors,
+        borderRadius: 5,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.parsed.y + (isCelsius ? "°C" : "°F"),
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11 } }, grid: { display: false } },
+        y: {
+          ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11 }, callback: v => v + "°" },
+          grid: { color: "rgba(255,255,255,0.06)" },
+        },
+      },
+    },
+  });
+}
+
+document.getElementById("fab-history").addEventListener("click", openHistory);
+document.getElementById("history-close-btn").addEventListener("click", closeHistory);
+
+// Extend Escape key handler to also close history overlay
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeHistory();
+});
