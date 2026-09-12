@@ -6,6 +6,9 @@
         <meta charset="UTF-8"/>
         <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <title>Weather Forecast</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="Project.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
         <link rel="manifest" href="manifest.json"/>
@@ -91,6 +94,15 @@
                     </button>
                     <!-- Pin current city -->
                     <button id="pin-button" title="Pin this city to saved locations">📌</button>
+                    <!-- Voice search -->
+                    <button id="voice-btn" title="Search by voice">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
                 </div>
 
                 <!-- Current conditions -->
@@ -98,6 +110,7 @@
                     <h4 class="location" title="GPS coordinates">0.00°N, 0.00°E</h4>
                     <img id="weather-icon" src="" alt="Weather icon" class="icon" title="Weather condition icon"/>
                     <div class="description" title="Current weather condition">description</div>
+                    <div id="ai-summary" title="Auto-generated summary based on current conditions"></div>
                     <div class="humidity"  title="Relative humidity. Above 70% muggy, below 30% dry.">Humidity: 00%</div>
                     <div class="wind-row">
                         <div class="wind" title="Wind speed. Calm 0–5 | Breezy 6–19 | Windy 20–38 | Strong 39+">Wind Speed: 0 km/h</div>
@@ -173,6 +186,7 @@
 
                     <!-- 5-day forecast strip -->
                     <div id="forecast-strip" title="5-day forecast"></div>
+                    <div id="forecast-trend" title="Linear regression trend across next 5 days"></div>
 
                     <!-- Button to open chart panel -->
                     <button id="chart-toggle-btn" title="Show 24h temperature and precipitation chart">
@@ -210,6 +224,7 @@
         <!-- Floating action buttons — bottom right -->
         <div id="fab-group">
             <button id="fab-embed" title="Get embed code">📋</button>
+            <button id="fab-history" title="Historical weather insight">📊</button>
             <button id="fab-map"   title="Open weather map">🗺</button>
         </div>
 
@@ -246,6 +261,38 @@
                     <div class="modal-actions">
                         <button id="embed-copy-btn">📋 Copy Code</button>
                         <span id="embed-copy-confirm" class="hidden">✓ Copied!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historical pattern insight overlay -->
+        <div id="history-overlay" class="overlay-fullscreen hidden">
+            <div class="modal-card history-card">
+                <div class="modal-header">
+                    <span>📊 Historical Pattern — <span id="history-city-name">—</span></span>
+                    <button id="history-close-btn" class="overlay-close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div id="history-loading" class="history-loading">
+                        <div class="spinner small"></div>
+                        <span>Fetching climate history…</span>
+                    </div>
+                    <div id="history-content" class="hidden">
+                        <div class="history-hero">
+                            <div class="history-today">
+                                <span class="history-label">Today</span>
+                                <span id="history-today-temp" class="history-temp">--°</span>
+                            </div>
+                            <div class="history-vs">vs</div>
+                            <div class="history-avg">
+                                <span class="history-label">10-Year Avg</span>
+                                <span id="history-avg-temp" class="history-temp">--°</span>
+                            </div>
+                        </div>
+                        <div id="history-verdict" class="history-verdict"></div>
+                        <div id="history-anomaly" class="history-anomaly hidden"></div>
+                        <canvas id="history-chart"></canvas>
                     </div>
                 </div>
             </div>
