@@ -4,7 +4,6 @@ A weather dashboard built with vanilla JavaScript, HTML, and CSS. It started out
 
 **Live demo:** https://thrylos13.github.io/Web-Tech-Project/
 
-<!-- add a screenshot or short gif of the app here -->
 
 ## What it does
 
