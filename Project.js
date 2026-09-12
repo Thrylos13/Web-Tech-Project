@@ -664,7 +664,7 @@ function renderHourly() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { left: 8, right: 8, top: 16, bottom: 8 } },
+      layout: { padding: { left: 10, right: 10, top: 20, bottom: 10 } },
       interaction: { mode: "nearest", intersect: false, axis: "x" },
       plugins: {
         legend: {
@@ -673,10 +673,10 @@ function renderHourly() {
           align: "end",
           labels: {
             color: "rgba(255,255,255,0.65)",
-            font: { size: 12 },
-            boxWidth: 20,
-            boxHeight: 2,
-            padding: 20,
+            font: { size: 14 },
+            boxWidth: 24,
+            boxHeight: 3,
+            padding: 24,
           },
         },
         tooltip: {
@@ -686,10 +686,10 @@ function renderHourly() {
           bodyColor: "rgba(255,255,255,0.75)",
           borderColor: "rgba(255,255,255,0.12)",
           borderWidth: 1,
-          padding: 12,
+          padding: 14,
           bodySpacing: 8,
-          bodyFont: { size: 13 },
-          titleFont: { size: 13, weight: "bold" },
+          bodyFont: { size: 14 },
+          titleFont: { size: 14, weight: "bold" },
           displayColors: true,
           boxWidth: 10,
           boxHeight: 10,
@@ -704,9 +704,9 @@ function renderHourly() {
         x: {
           ticks: {
             color: "rgba(255,255,255,0.7)",
-            font: { size: 12 },
+            font: { size: 13 },
             maxRotation: 0,
-            padding: 8,
+            padding: 10,
           },
           grid: { color: "rgba(255,255,255,0.06)" },
           border: { color: "rgba(255,255,255,0.1)" },
@@ -715,8 +715,8 @@ function renderHourly() {
           position: "left",
           ticks: {
             color: "rgba(255,220,100,0.85)",
-            font: { size: 12 },
-            padding: 10,
+            font: { size: 13 },
+            padding: 12,
             callback: v => v + (isCelsius ? "°" : "°F"),
           },
           grid: { color: "rgba(255,255,255,0.06)" },
@@ -727,8 +727,8 @@ function renderHourly() {
           min: 0, max: 100,
           ticks: {
             color: "rgba(100,180,255,0.85)",
-            font: { size: 12 },
-            padding: 10,
+            font: { size: 13 },
+            padding: 12,
             stepSize: 25,
             callback: v => v + "%",
           },
