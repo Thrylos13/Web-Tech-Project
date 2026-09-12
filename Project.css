@@ -628,7 +628,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .modal-card {
     background: var(--modal-bg);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px; padding: 36px 40px;
+    border-radius: 20px; padding: 40px 48px;
     width: 92%; max-width: 700px;
     color: var(--text-primary);
     font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -721,10 +721,10 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .history-loading.hidden { display: none; }
 
 /* ── History modal content ───────────────────────────────────────── */
-.history-card { max-width: 640px; }
+.history-card { max-width: 860px; }
 .history-hero {
     display: flex; align-items: center; justify-content: center;
-    gap: 40px; margin: 16px 0 28px;
+    gap: 64px; margin: 16px 0 28px;
 }
 .history-today, .history-avg {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
