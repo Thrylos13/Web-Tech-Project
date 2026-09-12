@@ -16,7 +16,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+
+      - name: Debug — list repo contents
+        run: |
+          echo "── Full repo file tree ──"
+          find . -not -path "./node_modules/*" -not -path "./.git/*" -type f
+          echo "── Searching for *.test.js anywhere ──"
+          find . -name "*.test.js" -not -path "./node_modules/*"
 
       - name: Install dependencies
         run: npm install
