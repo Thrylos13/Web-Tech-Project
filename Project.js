@@ -93,6 +93,14 @@ function applyTheme(theme) {
   const btn = document.getElementById("theme-toggle");
   if (btn) btn.textContent = theme === "light" ? "🌙" : "☀️";
   localStorage.setItem("theme", theme);
+
+  // Re-render any currently open Chart.js charts so their colors
+  // update immediately instead of only on next open.
+  if (chartPanel.classList.contains("open")) renderHourly();
+  const historyOverlay = document.getElementById("history-overlay");
+  if (historyOverlay.classList.contains("visible") && lastHistoryYearData) {
+    renderHistoryChart(lastHistoryYearData, lastHistoryTodayTemp);
+  }
 }
 (function initThemeIcon() {
   const current = document.documentElement.getAttribute("data-theme") || "dark";
@@ -671,6 +679,27 @@ function renderHourly() {
 
   if (hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
 
+  // Chart.js colors are set at creation time and don't read CSS variables,
+  // so pick an explicit palette based on the current theme. Light mode
+  // needs deeper, more saturated colors — the pale dark-mode yellow/blue
+  // has too little contrast against a white/light chart background.
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  const palette = isLight
+    ? {
+        tempLine: "rgba(196,130,0,0.95)",   tempFill: "rgba(196,130,0,0.08)",   tempPoint: "rgba(196,130,0,1)",
+        rainLine: "rgba(21,101,192,0.9)",   rainFill: "rgba(21,101,192,0.06)",  rainPoint: "rgba(21,101,192,1)",
+        tick: "rgba(20,30,60,0.7)", grid: "rgba(20,30,60,0.08)", border: "rgba(20,30,60,0.15)",
+        legend: "rgba(20,30,60,0.75)",
+        tooltipBg: "rgba(255,255,255,0.97)", tooltipTitle: "rgba(20,30,60,0.9)", tooltipBody: "rgba(20,30,60,0.8)", tooltipBorder: "rgba(20,30,60,0.15)",
+      }
+    : {
+        tempLine: "rgba(255,220,100,0.9)",  tempFill: "rgba(255,220,100,0.08)", tempPoint: "rgba(255,220,100,1)",
+        rainLine: "rgba(100,180,255,0.85)", rainFill: "rgba(100,180,255,0.06)", rainPoint: "rgba(100,180,255,1)",
+        tick: "rgba(255,255,255,0.7)", grid: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)",
+        legend: "rgba(255,255,255,0.65)",
+        tooltipBg: "rgba(20,22,35,0.92)", tooltipTitle: "rgba(255,255,255,0.85)", tooltipBody: "rgba(255,255,255,0.75)", tooltipBorder: "rgba(255,255,255,0.12)",
+      };
+
   hourlyChart = new Chart(canvas, {
     type: "line",
     data: {
@@ -679,13 +708,13 @@ function renderHourly() {
         {
           label: "Temp",
           data: temps,
-          borderColor: "rgba(255,220,100,0.9)",
-          backgroundColor: "rgba(255,220,100,0.08)",
-          pointBackgroundColor: "rgba(255,220,100,1)",
-          pointBorderColor: "rgba(255,220,100,1)",
+          borderColor: palette.tempLine,
+          backgroundColor: palette.tempFill,
+          pointBackgroundColor: palette.tempPoint,
+          pointBorderColor: palette.tempPoint,
           pointRadius: 5,
           pointHoverRadius: 8,
-          pointHoverBackgroundColor: "rgba(255,220,100,1)",
+          pointHoverBackgroundColor: palette.tempPoint,
           borderWidth: 2.5,
           tension: 0.4,
           fill: true,
@@ -694,13 +723,13 @@ function renderHourly() {
         {
           label: "Rain %",
           data: precip,
-          borderColor: "rgba(100,180,255,0.85)",
-          backgroundColor: "rgba(100,180,255,0.06)",
-          pointBackgroundColor: "rgba(100,180,255,1)",
-          pointBorderColor: "rgba(100,180,255,1)",
+          borderColor: palette.rainLine,
+          backgroundColor: palette.rainFill,
+          pointBackgroundColor: palette.rainPoint,
+          pointBorderColor: palette.rainPoint,
           pointRadius: 5,
           pointHoverRadius: 8,
-          pointHoverBackgroundColor: "rgba(100,180,255,1)",
+          pointHoverBackgroundColor: palette.rainPoint,
           borderWidth: 2,
           tension: 0.4,
           fill: true,
@@ -720,7 +749,7 @@ function renderHourly() {
           position: "top",
           align: "end",
           labels: {
-            color: "rgba(255,255,255,0.65)",
+            color: palette.legend,
             font: { size: 14 },
             boxWidth: 24,
             boxHeight: 3,
@@ -729,10 +758,10 @@ function renderHourly() {
         },
         tooltip: {
           position: "nearest",
-          backgroundColor: "rgba(20,22,35,0.92)",
-          titleColor: "rgba(255,255,255,0.85)",
-          bodyColor: "rgba(255,255,255,0.75)",
-          borderColor: "rgba(255,255,255,0.12)",
+          backgroundColor: palette.tooltipBg,
+          titleColor: palette.tooltipTitle,
+          bodyColor: palette.tooltipBody,
+          borderColor: palette.tooltipBorder,
           borderWidth: 1,
           padding: 14,
           bodySpacing: 8,
@@ -751,37 +780,37 @@ function renderHourly() {
       scales: {
         x: {
           ticks: {
-            color: "rgba(255,255,255,0.7)",
+            color: palette.tick,
             font: { size: 13 },
             maxRotation: 0,
             padding: 10,
           },
-          grid: { color: "rgba(255,255,255,0.06)" },
-          border: { color: "rgba(255,255,255,0.1)" },
+          grid: { color: palette.grid },
+          border: { color: palette.border },
         },
         yTemp: {
           position: "left",
           ticks: {
-            color: "rgba(255,220,100,0.85)",
+            color: isLight ? "rgba(196,130,0,0.9)" : "rgba(255,220,100,0.85)",
             font: { size: 13 },
             padding: 12,
             callback: v => v + (isCelsius ? "°" : "°F"),
           },
-          grid: { color: "rgba(255,255,255,0.06)" },
-          border: { color: "rgba(255,255,255,0.1)", dash: [3, 3] },
+          grid: { color: palette.grid },
+          border: { color: palette.border, dash: [3, 3] },
         },
         yPrecip: {
           position: "right",
           min: 0, max: 100,
           ticks: {
-            color: "rgba(100,180,255,0.85)",
+            color: isLight ? "rgba(21,101,192,0.9)" : "rgba(100,180,255,0.85)",
             font: { size: 13 },
             padding: 12,
             stepSize: 25,
             callback: v => v + "%",
           },
           grid: { drawOnChartArea: false },
-          border: { color: "rgba(255,255,255,0.1)" },
+          border: { color: palette.border },
         },
       },
     },
@@ -1591,6 +1620,8 @@ document.getElementById("voice-btn").addEventListener("click", () => {
 // value from the 10-year trend.
 // ═══════════════════════════════════════════════════════════════════
 let historyChartInstance = null;
+let lastHistoryYearData  = null; // cached so theme toggle can re-render without refetching
+let lastHistoryTodayTemp = null;
 
 function openHistory() {
   if (!currentLocation || !lastData) { showError("Search a city first!"); return; }
@@ -1691,6 +1722,8 @@ function fetchHistoricalData(lat, lon) {
       if (nnEl) nnEl.classList.add("hidden");
     });
 
+    lastHistoryYearData  = valid;
+    lastHistoryTodayTemp = todayTemp;
     renderHistoryChart(valid, todayTemp);
 
     document.getElementById("history-loading").classList.add("hidden");
@@ -1749,8 +1782,14 @@ function renderHistoryChart(yearData, todayTemp) {
   labels.push("This Year");
   temps.push(isCelsius ? todayTemp : toF(todayTemp));
 
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  const barColorNormal = isLight ? "rgba(21,101,192,0.55)" : "rgba(100,180,255,0.5)";
+  const barColorHighlight = isLight ? "rgba(196,130,0,0.9)" : "rgba(255,180,80,0.9)";
+  const tickColor = isLight ? "rgba(20,30,60,0.65)" : "rgba(255,255,255,0.6)";
+  const gridColor = isLight ? "rgba(20,30,60,0.08)" : "rgba(255,255,255,0.06)";
+
   const barColors = labels.map((l, i) =>
-    i === labels.length - 1 ? "rgba(255,180,80,0.9)" : "rgba(100,180,255,0.5)"
+    i === labels.length - 1 ? barColorHighlight : barColorNormal
   );
 
   historyChartInstance = new Chart(canvas, {
@@ -1776,10 +1815,10 @@ function renderHistoryChart(yearData, todayTemp) {
         },
       },
       scales: {
-        x: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11 } }, grid: { display: false } },
+        x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { display: false } },
         y: {
-          ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11 }, callback: v => v + "°" },
-          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: { color: tickColor, font: { size: 11 }, callback: v => v + "°" },
+          grid: { color: gridColor },
         },
       },
     },

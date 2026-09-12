@@ -276,7 +276,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     display: flex; justify-content: center; gap: 24px;
     padding: 6px 0 4px; font-size: 0.85rem;
 }
-.sun-item { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.85); }
+.sun-item { display: flex; align-items: center; gap: 5px; color: var(--text-primary); opacity: 0.85; }
 .sun-icon  { font-size: 1.1rem; }
 .aqi-uv-row {
     display: flex; justify-content: center; gap: 12px;
@@ -292,7 +292,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .aqi-uv-label {
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; opacity: 0.7; color: white;
+    text-transform: uppercase; opacity: 0.7; color: var(--text-primary);
 }
 .aqi-uv-value {
     font-size: 1.5rem; font-weight: 300;
@@ -427,14 +427,14 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 #chart-close-btn {
     background: none;
     border: none;
-    color: rgba(255,255,255,0.6);
+    color: var(--text-muted);
     font-size: 1.3rem;
     cursor: pointer;
     width: auto; height: auto;
     padding: 0 4px;
     transition: color 0.15s;
 }
-#chart-close-btn:hover { color: white; }
+#chart-close-btn:hover { color: var(--text-primary); }
 #hourly-chart {
     width: 100% !important;
     height: 420px !important;
@@ -594,15 +594,29 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .overlay-controls select option { background: #0d1b2e; color: white; }
 .overlay-close {
-    background: rgba(255,255,255,0.1) !important;
-    border: 1px solid rgba(255,255,255,0.2) !important;
-    color: white !important; border-radius: 8px !important;
+    border-radius: 8px !important;
     padding: 6px 14px !important;
     font-size: 0.85rem; cursor: pointer;
     width: auto !important; height: auto !important;
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
 }
-.overlay-close:hover { background: rgba(255,255,255,0.2) !important; }
+/* Map overlay's topbar always sits on the dark full-screen scrim
+   (never themed light), so its close button stays white always. */
+.overlay-topbar .overlay-close {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+}
+.overlay-topbar .overlay-close:hover { background: rgba(255,255,255,0.2) !important; }
+/* Embed/History close buttons sit inside .modal-card, which IS
+   themed light in light mode — so these must adapt or they become
+   invisible white-on-white. */
+.modal-header .overlay-close {
+    background: var(--chip-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+.modal-header .overlay-close:hover { background: rgba(128,128,128,0.25) !important; }
 
 /* ── Map container ───────────────────────────────────────────────── */
 #map-container { flex: 1; }
@@ -689,7 +703,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     font-size: 0.82rem;
     line-height: 1.4;
     padding: 8px 14px 4px;
-    color: rgba(255,255,255,0.75);
+    color: var(--text-muted);
     font-style: italic;
     max-width: 280px;
     margin: 0 auto;
@@ -717,14 +731,14 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .history-label {
     font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.5); font-weight: 700;
+    color: var(--text-muted); font-weight: 700;
 }
 .history-temp {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
     font-size: 2.8rem; font-weight: 600;
 }
 .history-vs {
-    font-size: 0.9rem; color: rgba(255,255,255,0.4); font-weight: 600;
+    font-size: 0.9rem; color: var(--text-muted); font-weight: 600;
     margin-top: 24px;
 }
 .history-verdict {
@@ -736,7 +750,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .history-verdict.warmer { color: #ff8a65; }
 .history-verdict.cooler { color: #64b5f6; }
-.history-verdict.normal { color: rgba(255,255,255,0.7); }
+.history-verdict.normal { color: var(--text-muted); }
 #history-chart { width: 100% !important; height: 280px !important; }
 #history-content.hidden { display: none; }
 
