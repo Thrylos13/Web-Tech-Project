@@ -1,10 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════
-// IDB.JS — thin native IndexedDB wrapper (no library)
-// Replaces localStorage for structured, growable data: pinned cities
-// and search history. Falls back gracefully — callers should wrap
-// calls in try/catch and fall back to localStorage if IndexedDB is
-// unavailable (private browsing, very old browsers).
-// ═══════════════════════════════════════════════════════════════════
 (function (root) {
   const DB_NAME    = "WeatherAppDB";
   const DB_VERSION = 1;
