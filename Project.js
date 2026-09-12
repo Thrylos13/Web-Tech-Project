@@ -1782,40 +1782,103 @@ function renderHistoryChart(yearData, todayTemp) {
   labels.push("This Year");
   temps.push(isCelsius ? todayTemp : toF(todayTemp));
 
-  const isLight = document.documentElement.getAttribute("data-theme") === "light";
-  const barColorNormal = isLight ? "rgba(21,101,192,0.55)" : "rgba(100,180,255,0.5)";
-  const barColorHighlight = isLight ? "rgba(196,130,0,0.9)" : "rgba(255,180,80,0.9)";
-  const tickColor = isLight ? "rgba(20,30,60,0.65)" : "rgba(255,255,255,0.6)";
-  const gridColor = isLight ? "rgba(20,30,60,0.08)" : "rgba(255,255,255,0.06)";
+  const avgTemp = temps.slice(0, -1).reduce((s, t) => s + t, 0) / (temps.length - 1);
 
-  const barColors = labels.map((l, i) =>
-    i === labels.length - 1 ? barColorHighlight : barColorNormal
-  );
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  const lineColor      = isLight ? "rgba(21,101,192,0.85)"  : "rgba(100,180,255,0.85)";
+  const fillColor      = isLight ? "rgba(21,101,192,0.08)"  : "rgba(100,180,255,0.08)";
+  const pointColor     = isLight ? "rgba(21,101,192,1)"     : "rgba(100,180,255,1)";
+  const highlightColor = isLight ? "rgba(196,130,0,1)"      : "rgba(255,180,80,1)";
+  const avgLineColor   = isLight ? "rgba(20,30,60,0.35)"    : "rgba(255,255,255,0.35)";
+  const tickColor      = isLight ? "rgba(20,30,60,0.65)"    : "rgba(255,255,255,0.6)";
+  const gridColor      = isLight ? "rgba(20,30,60,0.08)"    : "rgba(255,255,255,0.06)";
+  const tooltipBg      = isLight ? "rgba(255,255,255,0.97)" : "rgba(20,22,35,0.92)";
+  const tooltipTitle   = isLight ? "rgba(20,30,60,0.9)"     : "rgba(255,255,255,0.85)";
+  const tooltipBody    = isLight ? "rgba(20,30,60,0.8)"     : "rgba(255,255,255,0.75)";
+  const tooltipBorder  = isLight ? "rgba(20,30,60,0.15)"    : "rgba(255,255,255,0.12)";
+
+  // Highlight the last point ("This Year") — bigger radius, distinct color —
+  // instead of a solid bar block, so it reads as "the point that matters"
+  // without needing a separate legend swatch.
+  const lastIdx = temps.length - 1;
+  const pointColors  = temps.map((_, i) => i === lastIdx ? highlightColor : pointColor);
+  const pointRadii   = temps.map((_, i) => i === lastIdx ? 7 : 4.5);
+  const pointHovers  = temps.map((_, i) => i === lastIdx ? 10 : 7);
 
   historyChartInstance = new Chart(canvas, {
-    type: "bar",
+    type: "line",
     data: {
       labels,
-      datasets: [{
-        label: "Temp",
-        data: temps,
-        backgroundColor: barColors,
-        borderRadius: 5,
-      }],
+      datasets: [
+        {
+          label: "Yearly Temp",
+          data: temps,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          pointRadius: pointRadii,
+          pointHoverRadius: pointHovers,
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: true,
+        },
+        {
+          label: "10-Year Avg",
+          data: new Array(temps.length).fill(avgTemp),
+          borderColor: avgLineColor,
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { left: 6, right: 6, top: 16, bottom: 6 } },
+      interaction: { mode: "nearest", intersect: false, axis: "x" },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: "top",
+          align: "end",
+          labels: {
+            color: tickColor,
+            font: { size: 11 },
+            boxWidth: 18,
+            boxHeight: 2,
+            padding: 14,
+            // Hide the average reference line from the legend — it's a
+            // subtle visual aid, not a second data series worth a swatch.
+            filter: item => item.text !== "10-Year Avg",
+          },
+        },
         tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: tooltipTitle,
+          bodyColor: tooltipBody,
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 12,
+          bodyFont: { size: 13 },
+          titleFont: { size: 13, weight: "bold" },
+          displayColors: false,
           callbacks: {
-            label: ctx => ctx.parsed.y + (isCelsius ? "°C" : "°F"),
+            title: items => items[0].label,
+            label: ctx => ctx.dataset.label === "10-Year Avg"
+              ? null
+              : (ctx.dataIndex === lastIdx ? "This year: " : "") + ctx.parsed.y.toFixed(1) + (isCelsius ? "°C" : "°F"),
           },
         },
       },
       scales: {
-        x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { display: false } },
+        x: {
+          ticks: { color: tickColor, font: { size: 11 } },
+          grid: { display: false },
+        },
         y: {
           ticks: { color: tickColor, font: { size: 11 }, callback: v => v + "°" },
           grid: { color: gridColor },
