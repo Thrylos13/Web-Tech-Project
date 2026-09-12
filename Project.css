@@ -339,11 +339,11 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     z-index: 3;
 }
 .chart-panel.open {
-    width: 560px;
+    width: 620px;
 }
 .chart-panel-inner {
-    width: 560px;
-    padding: 24px 28px;
+    width: 620px;
+    padding: 30px 34px;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -351,6 +351,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     transform: translateX(-12px);
     transition: opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s;
     pointer-events: none;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 .chart-panel.open .chart-panel-inner {
     opacity: 1;
@@ -364,7 +365,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     min-height: 0;
 }
 .chart-panel-title {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -375,7 +376,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 18px;
+    margin-bottom: 22px;
     white-space: nowrap;
 }
 #chart-close-btn {
@@ -538,22 +539,24 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 }
 .overlay-topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px;
+    padding: 18px 26px;
     background: rgba(255,255,255,0.05);
     border-bottom: 1px solid rgba(255,255,255,0.1);
     flex-shrink: 0;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 .overlay-title {
-    color: white; font-size: 1rem; font-weight: 600;
+    color: white; font-size: 1.1rem; font-weight: 600;
 }
 .overlay-controls {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 14px;
 }
 .overlay-controls select {
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.2);
     color: white; border-radius: 8px;
-    padding: 6px 10px; font-size: 0.85rem; cursor: pointer;
+    padding: 8px 12px; font-size: 0.9rem; cursor: pointer;
+    font-family: 'Inter', sans-serif;
 }
 .overlay-controls select option { background: #0d1b2e; color: white; }
 .overlay-close {
@@ -571,21 +574,22 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 #map-container { flex: 1; }
 
 /* ── Embed modal ─────────────────────────────────────────────────── */
-#embed-overlay {
+#embed-overlay, #history-overlay {
     align-items: center; justify-content: center;
 }
 .modal-card {
     background: rgba(16,24,48,0.98);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px; padding: 28px;
-    width: 90%; max-width: 640px;
+    border-radius: 20px; padding: 36px 40px;
+    width: 92%; max-width: 700px;
     color: white;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 20px; font-size: 1rem; font-weight: 700;
+    margin-bottom: 24px; font-size: 1.1rem; font-weight: 700;
 }
-.modal-body p { font-size: 0.88rem; opacity: 0.75; margin-bottom: 14px; }
+.modal-body p { font-size: 0.95rem; opacity: 0.75; margin-bottom: 16px; line-height: 1.5; }
 #embed-code {
     width: 100%; height: 120px;
     background: rgba(0,0,0,0.35);
@@ -669,36 +673,37 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .history-loading.hidden { display: none; }
 
 /* ── History modal content ───────────────────────────────────────── */
-.history-card { max-width: 560px; }
+.history-card { max-width: 640px; }
 .history-hero {
     display: flex; align-items: center; justify-content: center;
-    gap: 24px; margin: 10px 0 16px;
+    gap: 40px; margin: 16px 0 22px;
 }
 .history-today, .history-avg {
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
 .history-label {
-    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: rgba(255,255,255,0.5); font-weight: 700;
 }
 .history-temp {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
-    font-size: 2.4rem; font-weight: 600;
+    font-size: 2.8rem; font-weight: 600;
 }
 .history-vs {
-    font-size: 0.85rem; color: rgba(255,255,255,0.4); font-weight: 600;
-    margin-top: 14px;
+    font-size: 0.9rem; color: rgba(255,255,255,0.4); font-weight: 600;
+    margin-top: 20px;
 }
 .history-verdict {
-    text-align: center; font-size: 0.95rem; font-weight: 600;
-    padding: 10px 16px; border-radius: 12px;
+    text-align: center; font-size: 1rem; font-weight: 600;
+    padding: 12px 18px; border-radius: 12px;
     background: rgba(255,255,255,0.06);
-    margin-bottom: 18px;
+    margin-bottom: 22px;
+    font-family: 'Inter', sans-serif;
 }
 .history-verdict.warmer { color: #ff8a65; }
 .history-verdict.cooler { color: #64b5f6; }
 .history-verdict.normal { color: rgba(255,255,255,0.7); }
-#history-chart { width: 100% !important; height: 220px !important; }
+#history-chart { width: 100% !important; height: 260px !important; }
 #history-content.hidden { display: none; }
 
 /* ── ML #1: Forecast trend badge (linear regression) ─────────────── */
