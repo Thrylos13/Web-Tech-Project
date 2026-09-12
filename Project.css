@@ -339,11 +339,11 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     z-index: 3;
 }
 .chart-panel.open {
-    width: 620px;
+    width: 720px;
 }
 .chart-panel-inner {
-    width: 620px;
-    padding: 30px 34px;
+    width: 720px;
+    padding: 40px 48px;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -361,29 +361,31 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .chart-panel-body {
     flex: 1;
     display: flex;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
     min-height: 0;
+    padding-top: 12px;
 }
 .chart-panel-title {
-    font-size: 0.95rem;
+    font-size: 1.15rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    opacity: 0.75;
+    opacity: 0.8;
     white-space: nowrap;
 }
 .chart-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 22px;
+    margin-bottom: 32px;
     white-space: nowrap;
 }
 #chart-close-btn {
     background: none;
     border: none;
     color: rgba(255,255,255,0.6);
-    font-size: 1rem;
+    font-size: 1.3rem;
     cursor: pointer;
     width: auto; height: auto;
     padding: 0 4px;
@@ -392,7 +394,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 #chart-close-btn:hover { color: white; }
 #hourly-chart {
     width: 100% !important;
-    height: 340px !important;
+    height: 420px !important;
 }
 .suggestions-list {
     position: absolute; top: 100%; left: 0; right: 0;
