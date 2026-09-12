@@ -13,7 +13,7 @@ body {
     text-align: center;
     min-height: 100vh;
     padding: 24px 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow-x: hidden;
 }
 #lava-bg {
@@ -277,10 +277,18 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 .box.theme-dusk  { background: rgba(100, 40, 10, 0.72); }
 .box.theme-night { background: rgba(10, 10, 30, 0.82); }
 .date-container { width: 100%; }
-.date-container .time { font-size: 4.5rem; font-weight: 100; }
+.date-container .time {
+    font-size: 4.5rem; font-weight: 500;
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    letter-spacing: -0.02em;
+}
 .date-container .date { font-size: 1rem; margin-bottom: 4px; }
 .country { font-size: 1em; font-weight: bold; }
 .city    { margin-bottom: 0; font-size: 1.1em; }
+.temp {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    letter-spacing: -0.02em;
+}
 .high-low { margin-top: 4px; font-size: 0.9rem; font-weight: 500; opacity: 0.85; }
 #forecast-strip {
     display: flex; gap: 4px;
@@ -623,3 +631,107 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
 #error-box.toast-success {
     background: rgba(40,140,80,0.95);
 }
+
+/* ── Voice search button ─────────────────────────────────────────── */
+#voice-btn {
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+#voice-btn.listening {
+    background: rgba(255,80,80,0.8);
+    animation: micPulse 1.2s ease-in-out infinite;
+}
+@keyframes micPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,80,80,0.5); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,80,80,0); }
+}
+
+/* ── AI summary line ─────────────────────────────────────────────── */
+#ai-summary {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    padding: 8px 14px 4px;
+    color: rgba(255,255,255,0.75);
+    font-style: italic;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+/* ── Small spinner variant for history modal ─────────────────────── */
+.spinner.small {
+    width: 26px; height: 26px; border-width: 3px;
+}
+.history-loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 40px 0; color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+}
+.history-loading.hidden { display: none; }
+
+/* ── History modal content ───────────────────────────────────────── */
+.history-card { max-width: 560px; }
+.history-hero {
+    display: flex; align-items: center; justify-content: center;
+    gap: 24px; margin: 10px 0 16px;
+}
+.history-today, .history-avg {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.history-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5); font-weight: 700;
+}
+.history-temp {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-size: 2.4rem; font-weight: 600;
+}
+.history-vs {
+    font-size: 0.85rem; color: rgba(255,255,255,0.4); font-weight: 600;
+    margin-top: 14px;
+}
+.history-verdict {
+    text-align: center; font-size: 0.95rem; font-weight: 600;
+    padding: 10px 16px; border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    margin-bottom: 18px;
+}
+.history-verdict.warmer { color: #ff8a65; }
+.history-verdict.cooler { color: #64b5f6; }
+.history-verdict.normal { color: rgba(255,255,255,0.7); }
+#history-chart { width: 100% !important; height: 220px !important; }
+#history-content.hidden { display: none; }
+
+/* ── ML #1: Forecast trend badge (linear regression) ─────────────── */
+.forecast-trend {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 10px;
+    display: inline-block;
+    background: rgba(255,255,255,0.06);
+}
+.trend-warm-badge   { color: #ff8a65; }
+.trend-cool-badge   { color: #64b5f6; }
+.trend-stable-badge { color: rgba(255,255,255,0.6); }
+
+/* ── ML #2: Similar-weather pinned city highlight ────────────────── */
+.saved-chip.chip-similar {
+    border: 1.5px solid rgba(255,210,90,0.8);
+    background: rgba(255,210,90,0.12);
+    box-shadow: 0 0 8px rgba(255,210,90,0.25);
+}
+
+/* ── ML #3: Anomaly detection badge ──────────────────────────────── */
+.history-anomaly {
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ffb74d;
+    background: rgba(255,183,77,0.1);
+    border: 1px solid rgba(255,183,77,0.3);
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin: -6px 0 14px;
+}
+.history-anomaly.hidden { display: none; }
