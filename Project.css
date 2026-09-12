@@ -1,12 +1,5 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ═══════════════════════════════════════════════════════════════════
-   THEME VARIABLES — dark (default) and light overrides.
-   Scope: the UI chrome (cards, panels, modals, chips, text).
-   NOT themed: the lava-lamp background, weather particles, and the
-   time-of-day box tints (dawn/day/dusk/night) — those stay
-   atmospheric/dark by design regardless of light/dark UI mode.
-   ═══════════════════════════════════════════════════════════════════ */
 :root {
     --bg-primary:     #060f1f;
     --card-bg:        rgba(40,39,39,0.4);
@@ -19,6 +12,7 @@
     --border-color:   rgba(255,255,255,0.15);
     --input-bg:       lightgray;
 }
+
 html[data-theme="light"] {
     --bg-primary:     #e9eef8;
     --card-bg:        rgba(255,255,255,0.65);
@@ -33,13 +27,13 @@ html[data-theme="light"] {
 }
 
 html { background-color: var(--bg-primary); }
+
 .sr-only {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;
     clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-/* ── Accessibility: visible focus ring for keyboard navigation ────── */
 :focus-visible {
     outline: 2px solid rgba(120,170,255,0.9);
     outline-offset: 2px;
@@ -58,27 +52,39 @@ body {
     overflow-x: hidden;
     color: var(--text-primary);
 }
+
 #lava-bg {
     position: fixed; inset: 0; z-index: 1;
     background: #060f1f; overflow: hidden; pointer-events: none;
 }
+
 .blob {
     position: absolute; border-radius: 50%;
     filter: blur(90px); opacity: 0.75; will-change: transform;
 }
+
 .b1 { width:700px;height:700px;background:radial-gradient(circle,#1e4db7,#0a2060);top:-150px;left:-150px;animation:drift1 14s ease-in-out infinite alternate; }
+
 .b2 { width:550px;height:550px;background:radial-gradient(circle,#0d3580,#07194a);bottom:-120px;right:-100px;animation:drift2 11s ease-in-out infinite alternate; }
+
 .b3 { width:480px;height:480px;background:radial-gradient(circle,#2563eb,#1344aa);top:40%;left:35%;animation:drift3 17s ease-in-out infinite alternate; }
+
 .b4 { width:380px;height:380px;background:radial-gradient(circle,#1a3fa0,#040e2c);top:10%;right:10%;animation:drift4 13s ease-in-out infinite alternate; }
+
 @keyframes drift1 { 0%{transform:translate(0,0) scale(1)} 40%{transform:translate(120px,80px) scale(1.12)} 100%{transform:translate(60px,180px) scale(0.92)} }
+
 @keyframes drift2 { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(-90px,-70px) scale(1.1)} 100%{transform:translate(-40px,-160px) scale(0.95)} }
+
 @keyframes drift3 { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(-80px,60px) scale(1.15)} 66%{transform:translate(100px,-50px) scale(0.9)} 100%{transform:translate(-40px,90px) scale(1.05)} }
+
 @keyframes drift4 { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(-60px,80px) scale(1.08)} 100%{transform:translate(80px,40px) scale(0.93)} }
+
 #weather-bg {
     position: fixed; inset: 0; z-index: 2;
     background-size: cover; background-position: center; background-repeat: no-repeat;
     opacity: 0; transition: opacity 1.2s ease; pointer-events: none;
 }
+
 #weather-bg.loaded { opacity: 1; }
 
 #particle-canvas {
@@ -98,32 +104,39 @@ body {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+
 @keyframes icon-spin-fast {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+
 @keyframes icon-drift {
     0%,100% { transform: translateX(0px); }
     50%      { transform: translateX(8px); }
 }
+
 @keyframes icon-bounce {
     0%,100% { transform: translateY(0px); }
     50%      { transform: translateY(6px); }
 }
+
 @keyframes icon-sway {
     0%,100% { transform: rotate(-6deg); }
     50%      { transform: rotate(6deg); }
 }
+
 @keyframes icon-pulse {
     0%,100% { opacity: 1; transform: scale(1); }
     50%      { opacity: 0.75; transform: scale(0.93); }
 }
+
 @keyframes icon-flash {
     0%,90%,100% { opacity: 1;    filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
     92%          { opacity: 0.3;  filter: drop-shadow(0 0 24px rgba(180,210,255,0.9)); }
     95%          { opacity: 1;    filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
     97%          { opacity: 0.3;  filter: drop-shadow(0 0 24px rgba(180,210,255,0.9)); }
 }
+
 @keyframes icon-shake {
     0%,100% { transform: translateX(0); }
     20%      { transform: translateX(-5px) rotate(-4deg); }
@@ -133,12 +146,19 @@ body {
 }
 
 .icon-spin      { animation: icon-spin      8s linear infinite; }
+
 .icon-spin-fast { animation: icon-spin-fast 2s linear infinite; }
+
 .icon-drift     { animation: icon-drift     4s ease-in-out infinite; }
+
 .icon-bounce    { animation: icon-bounce    1.4s ease-in-out infinite; }
+
 .icon-sway      { animation: icon-sway      3s ease-in-out infinite; }
+
 .icon-pulse     { animation: icon-pulse     3s ease-in-out infinite; }
+
 .icon-flash     { animation: icon-flash     4s ease-in-out infinite; }
+
 .icon-shake     { animation: icon-shake     0.8s ease-in-out infinite; }
 
 .container {
@@ -148,20 +168,25 @@ body {
     position: relative;
     z-index: 4;
 }
+
 .container.animate-in {
     animation: cardsIn 0.5s cubic-bezier(0.2, 0, 0, 1) both;
 }
+
 @keyframes cardsIn {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
 #loading-overlay {
     position: fixed; inset: 0; z-index: 9998;
     background: rgba(6,15,31,0.75);
     display: none; flex-direction: column;
     justify-content: center; align-items: center; gap: 16px;
 }
+
 #loading-overlay.show { display: flex; }
+
 .spinner {
     width: 44px; height: 44px;
     border: 4px solid rgba(255,255,255,0.2);
@@ -169,8 +194,11 @@ body {
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
+
 @keyframes spin { to { transform: rotate(360deg); } }
+
 .loading-text { color: white; font-size: 0.9rem; opacity: 0.8; }
+
 #error-box {
     display: none; position: fixed; top: 14px; left: 50%;
     transform: translateX(-50%);
@@ -181,13 +209,17 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     animation: slideDown 0.25s ease;
 }
+
 @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
 #error-box.show { display: block; }
+
 #close-error {
     position: absolute; top: 0; right: 0;
     color: white; border: none; background: transparent;
     font-size: 24px; font-weight: bold; cursor: pointer; padding: 2px 8px;
 }
+
 #saved-bar {
     position: relative; z-index: 3;
     display: flex; align-items: center; gap: 8px;
@@ -197,24 +229,31 @@ body {
     border-radius: 20px; -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
 }
+
 .saved-label {
     font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.1em; color: var(--text-muted);
 }
+
 .saved-chip {
     display: flex; align-items: center; gap: 4px;
     background: var(--chip-bg); border-radius: 14px;
     padding: 3px 10px 3px 12px; cursor: pointer; color: var(--text-primary);
     font-size: 0.82rem; transition: background 0.15s;
 }
+
 .saved-chip:hover { background: rgba(255,255,255,0.22); }
+
 .saved-chip span  { cursor: pointer; }
+
 .chip-remove {
     background: none; border: none; color: var(--text-muted);
     font-size: 1rem; cursor: pointer; line-height: 1; padding: 0 2px;
     transition: color 0.15s;
 }
+
 .chip-remove:hover { color: var(--text-primary); }
+
 .card {
     color: var(--text-primary);
     box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
@@ -224,14 +263,18 @@ body {
     width: 100%; max-width: 360px;
     display: flex; flex-direction: column;
 }
+
 .card-header {
     display: flex; justify-content: space-between;
     align-items: center; margin-bottom: 10px; gap: 10px;
 }
+
 .card-header h2 { font-size: 1.1rem; text-align: left; white-space: nowrap; }
+
 .header-buttons {
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
+
 #theme-toggle, #unit-toggle {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.35);
@@ -243,13 +286,17 @@ body {
     display: inline-flex; align-items: center; justify-content: center;
     line-height: 1;
 }
+
 #theme-toggle:hover, #unit-toggle:hover { background: rgba(255,255,255,0.28); }
+
 .search { position: relative; display: flex; align-items: center; gap: 4px; justify-content: center; }
+
 .search-input-wrap {
     position: relative;
     flex: 1; max-width: 160px;
     display: flex;
 }
+
 .search-bar {
     border: none; border-radius: 10px;
     height: 28px; padding: 0 8px; text-align: center;
@@ -258,30 +305,43 @@ body {
     transition: background 0.3s, color 0.3s, border 0.3s;
     flex: 1; width: 100%;
 }
+
 .search-bar.display-mode {
     background: rgba(255,255,255,0.15); color: var(--text-primary);
     font-weight: 600; border: 1px solid rgba(255,255,255,0.35); cursor: pointer;
 }
+
 .search-bar.display-mode:hover { background: rgba(255,255,255,0.25); }
+
 button, #geolocation-button, #pin-button {
     height: 30px; width: 30px; border: none;
     border-radius: 15px; cursor: pointer; flex-shrink: 0;
 }
+
 button:hover, #geolocation-button:hover, #pin-button:hover { background: grey; }
+
 #pin-button { font-size: 0.85rem; }
+
 .description,.humidity,.wind,.pressure { padding: 10px 15px; text-transform: capitalize; }
+
 [title] { cursor: help; }
+
 button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer; }
+
 .sun-row {
     display: flex; justify-content: center; gap: 24px;
     padding: 6px 0 4px; font-size: 0.85rem;
 }
+
 .sun-item { display: flex; align-items: center; gap: 5px; color: var(--text-primary); opacity: 0.85; }
+
 .sun-icon  { font-size: 1.1rem; }
+
 .aqi-uv-row {
     display: flex; justify-content: center; gap: 12px;
     margin-top: 6px; padding: 0 15px 10px;
 }
+
 .aqi-box, .uv-box {
     --indicator-color: #888;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -290,18 +350,22 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     border-radius: 12px; padding: 8px 18px; min-width: 80px;
     transition: border-color 0.4s;
 }
+
 .aqi-uv-label {
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
     text-transform: uppercase; opacity: 0.7; color: var(--text-primary);
 }
+
 .aqi-uv-value {
     font-size: 1.5rem; font-weight: 300;
     color: var(--indicator-color); line-height: 1; transition: color 0.4s;
 }
+
 .aqi-uv-cat {
     font-size: 0.7rem; font-weight: 600;
     color: var(--indicator-color); letter-spacing: 0.04em; transition: color 0.4s;
 }
+
 .box {
     box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
     border-radius: 0 20px 20px 0;
@@ -314,25 +378,38 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     background: rgba(40,39,39,0.72);
     transition: background 1.2s ease, border-radius 0.35s ease;
 }
+
 .box.panel-open { border-radius: 0 0 0 0; }
+
 .box.theme-dawn  { background: rgba(90, 50, 20, 0.72); }
+
 .box.theme-day   { background: rgba(20, 60, 100, 0.65); }
+
 .box.theme-dusk  { background: rgba(100, 40, 10, 0.72); }
+
 .box.theme-night { background: rgba(10, 10, 30, 0.82); }
+
 .date-container { width: 100%; }
+
 .date-container .time {
     font-size: 4.5rem; font-weight: 500;
     font-family: 'Space Grotesk', 'Inter', sans-serif;
     letter-spacing: -0.02em;
 }
+
 .date-container .date { font-size: 1rem; margin-bottom: 4px; }
+
 .country { font-size: 1em; font-weight: bold; }
+
 .city    { margin-bottom: 0; font-size: 1.1em; }
+
 .temp {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
     letter-spacing: -0.02em;
 }
+
 .high-low { margin-top: 4px; font-size: 0.9rem; font-weight: 500; opacity: 0.85; }
+
 #forecast-strip {
     display: flex; gap: 4px;
     justify-content: center;
@@ -340,6 +417,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     margin-top: 16px;
     overflow: visible;
 }
+
 .forecast-card {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     background: rgba(255,255,255,0.08);
@@ -347,11 +425,17 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     border-radius: 10px; padding: 7px 8px; min-width: 54px;
     font-size: 0.75rem; flex-shrink: 1; flex: 1;
 }
+
 .fc-day  { font-weight: 700; font-size: 0.72rem; opacity: 0.8; }
+
 .fc-icon { width: 32px; height: 32px; }
+
 .fc-hi   { font-weight: 600; }
+
 .fc-lo   { opacity: 0.6; font-size: 0.72rem; }
+
 .fc-pop  { font-size: 0.68rem; opacity: 0.75; margin-top: 1px; }
+
 .visibility { padding: 10px 15px; }
 
 #chart-toggle-btn {
@@ -365,6 +449,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     transition: background 0.2s;
     display: inline-flex; align-items: center; gap: 6px;
 }
+
 #chart-toggle-btn:hover { background: rgba(255,255,255,0.22); }
 
 .chart-panel {
@@ -381,9 +466,11 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     position: relative;
     z-index: 3;
 }
+
 .chart-panel.open {
     width: 720px;
 }
+
 .chart-panel-inner {
     width: 720px;
     padding: 40px 48px;
@@ -396,11 +483,13 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     pointer-events: none;
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }
+
 .chart-panel.open .chart-panel-inner {
     opacity: 1;
     transform: translateX(0);
     pointer-events: all;
 }
+
 .chart-panel-body {
     flex: 1;
     display: flex;
@@ -409,6 +498,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     min-height: 0;
     padding-top: 12px;
 }
+
 .chart-panel-title {
     font-size: 1.15rem;
     font-weight: 700;
@@ -417,6 +507,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     opacity: 0.8;
     white-space: nowrap;
 }
+
 .chart-panel-header {
     display: flex;
     justify-content: space-between;
@@ -424,6 +515,7 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     margin-bottom: 32px;
     white-space: nowrap;
 }
+
 #chart-close-btn {
     background: none;
     border: none;
@@ -434,11 +526,14 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     padding: 0 4px;
     transition: color 0.15s;
 }
+
 #chart-close-btn:hover { color: var(--text-primary); }
+
 #hourly-chart {
     width: 100% !important;
     height: 420px !important;
 }
+
 .suggestions-list {
     position: absolute; top: 100%; left: 0; right: 0;
     background: var(--suggestions-bg); border-radius: 0 0 10px 10px;
@@ -446,16 +541,22 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     z-index: 1000; max-height: 220px; overflow-y: auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-align: left;
 }
+
 .suggestions-list li {
     padding: 10px 14px; cursor: pointer; color: var(--text-primary);
     font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.07);
     transition: background 0.15s;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
 .suggestions-list li:last-child { border-bottom: none; }
+
 .suggestions-list li:hover,
+
 .suggestions-list li.suggestion-active { background: rgba(255,255,255,0.15); }
+
 .suggestions-list.hidden { display: none; }
+
 @media (max-width: 700px) {
     .container  { flex-direction: column; width: 100%; }
     .card       { border-radius: 20px 20px 0 0; max-width: 100%; }
@@ -468,22 +569,20 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     .chart-panel-inner { width: 100%; }
 }
 
-/* ── City transition ─────────────────────────────────────────────── */
 .container.city-fade-out {
     opacity: 0;
     transform: translateY(-10px);
     transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
-/* ── Wind row + compass ──────────────────────────────────────────── */
 .wind-row {
     display: flex; align-items: center; justify-content: center; gap: 10px;
 }
+
 .compass {
     width: 44px; height: 44px; flex-shrink: 0; cursor: help;
 }
 
-/* ── Share button ────────────────────────────────────────────────── */
 #share-btn {
     margin-top: 8px;
     width: auto; height: auto;
@@ -495,9 +594,9 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     display: inline-flex; align-items: center; gap: 5px;
     transition: background 0.2s;
 }
+
 #share-btn:hover { background: rgba(255,255,255,0.18); }
 
-/* ── Alert banner ────────────────────────────────────────────────── */
 #alert-banner {
     position: relative; z-index: 5;
     display: flex; align-items: center; justify-content: center;
@@ -509,16 +608,19 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     font-size: 0.82rem; color: white;
     animation: slideDown 0.3s ease;
 }
+
 #alert-banner.hidden { display: none; }
+
 #alert-items { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
 .alert-item { display: flex; align-items: center; gap: 4px; }
+
 #alert-close {
     position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
     background: none; border: none; color: white; font-size: 1.1rem;
     cursor: pointer; width: auto; height: auto; padding: 2px 6px;
 }
 
-/* ── Offline banner ──────────────────────────────────────────────── */
 #offline-banner {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 9997;
     background: rgba(30,30,30,0.95);
@@ -526,14 +628,15 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     padding: 10px; font-size: 0.85rem;
     border-top: 1px solid rgba(255,255,255,0.1);
 }
+
 #offline-banner.hidden { display: none; }
 
-/* ── Floating action buttons ─────────────────────────────────────── */
 #fab-group {
     position: fixed; bottom: 28px; right: 28px;
     display: flex; flex-direction: column; gap: 10px;
     z-index: 5;
 }
+
 #fab-group button {
     width: 48px; height: 48px;
     border-radius: 50%; border: none;
@@ -545,12 +648,12 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     transition: transform 0.2s, background 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
+
 #fab-group button:hover {
     transform: scale(1.1);
     background: rgba(40,80,160,0.95);
 }
 
-/* ── Fullscreen overlay base ─────────────────────────────────────── */
 .overlay-fullscreen {
     position: fixed; inset: 0; z-index: 9990;
     background: rgba(4,10,22,0.97);
@@ -561,16 +664,19 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     transition: opacity 0.35s cubic-bezier(0.4,0,0.2,1),
                 transform 0.35s cubic-bezier(0.4,0,0.2,1);
 }
+
 .overlay-fullscreen.hidden {
     opacity: 0;
     transform: scale(0.97);
     pointer-events: none;
 }
+
 .overlay-fullscreen.visible {
     opacity: 1;
     transform: scale(1);
     pointer-events: all;
 }
+
 .overlay-topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 26px;
@@ -579,12 +685,15 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     flex-shrink: 0;
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }
+
 .overlay-title {
     color: white; font-size: 1.1rem; font-weight: 600;
 }
+
 .overlay-controls {
     display: flex; align-items: center; gap: 14px;
 }
+
 .overlay-controls select {
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.2);
@@ -592,7 +701,9 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     padding: 8px 12px; font-size: 0.9rem; cursor: pointer;
     font-family: 'Inter', sans-serif;
 }
+
 .overlay-controls select option { background: #0d1b2e; color: white; }
+
 .overlay-close {
     border-radius: 8px !important;
     padding: 6px 14px !important;
@@ -600,31 +711,29 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     width: auto !important; height: auto !important;
     transition: background 0.2s, color 0.2s;
 }
-/* Map overlay's topbar always sits on the dark full-screen scrim
-   (never themed light), so its close button stays white always. */
+
 .overlay-topbar .overlay-close {
     background: rgba(255,255,255,0.1) !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
     color: white !important;
 }
+
 .overlay-topbar .overlay-close:hover { background: rgba(255,255,255,0.2) !important; }
-/* Embed/History close buttons sit inside .modal-card, which IS
-   themed light in light mode — so these must adapt or they become
-   invisible white-on-white. */
+
 .modal-header .overlay-close {
     background: var(--chip-bg) !important;
     border: 1px solid var(--border-color) !important;
     color: var(--text-primary) !important;
 }
+
 .modal-header .overlay-close:hover { background: rgba(128,128,128,0.25) !important; }
 
-/* ── Map container ───────────────────────────────────────────────── */
 #map-container { flex: 1; }
 
-/* ── Embed modal ─────────────────────────────────────────────────── */
 #embed-overlay, #history-overlay {
     align-items: center; justify-content: center;
 }
+
 .modal-card {
     background: var(--modal-bg);
     border: 1px solid rgba(255,255,255,0.12);
@@ -633,11 +742,14 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     color: var(--text-primary);
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }
+
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 24px; font-size: 1.1rem; font-weight: 700;
 }
+
 .modal-body p { font-size: 0.95rem; opacity: 0.75; margin-bottom: 16px; line-height: 1.5; }
+
 #embed-code {
     width: 100%; height: 120px;
     background: rgba(0,0,0,0.35);
@@ -646,9 +758,11 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     font-family: monospace; font-size: 0.8rem;
     padding: 12px; resize: none;
 }
+
 .modal-actions {
     display: flex; align-items: center; gap: 14px; margin-top: 14px;
 }
+
 #embed-copy-btn {
     background: rgba(30,77,183,0.8);
     border: 1px solid rgba(100,150,255,0.4);
@@ -658,13 +772,15 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     width: auto; height: auto;
     transition: background 0.2s;
 }
+
 #embed-copy-btn:hover { background: rgba(40,100,220,0.9); }
+
 #embed-copy-confirm {
     color: #69f0ae; font-size: 0.85rem; font-weight: 600;
 }
+
 #embed-copy-confirm.hidden { display: none; }
 
-/* ── Search history in dropdown ──────────────────────────────────── */
 .history-header {
     padding: 6px 14px 4px;
     font-size: 0.7rem; font-weight: 700;
@@ -673,32 +789,33 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     cursor: default;
     border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
+
 .history-item {
     display: flex; align-items: center; gap: 8px;
     color: rgba(255,255,255,0.75) !important;
 }
+
 .history-icon { opacity: 0.6; font-size: 0.85rem; }
 
-/* ── Toast (success variant of error box) ────────────────────────── */
 #error-box.toast-success {
     background: rgba(40,140,80,0.95);
 }
 
-/* ── Voice search button ─────────────────────────────────────────── */
 #voice-btn {
     display: flex; align-items: center; justify-content: center;
     transition: background 0.2s, color 0.2s;
 }
+
 #voice-btn.listening {
     background: rgba(255,80,80,0.8);
     animation: micPulse 1.2s ease-in-out infinite;
 }
+
 @keyframes micPulse {
     0%,100% { box-shadow: 0 0 0 0 rgba(255,80,80,0.5); }
     50%      { box-shadow: 0 0 0 8px rgba(255,80,80,0); }
 }
 
-/* ── AI summary line ─────────────────────────────────────────────── */
 #ai-summary {
     font-size: 0.82rem;
     line-height: 1.4;
@@ -709,38 +826,44 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     margin: 0 auto;
 }
 
-/* ── Small spinner variant for history modal ─────────────────────── */
 .spinner.small {
     width: 26px; height: 26px; border-width: 3px;
 }
+
 .history-loading {
     display: flex; align-items: center; justify-content: center;
     gap: 12px; padding: 40px 0; color: rgba(255,255,255,0.6);
     font-size: 0.9rem;
 }
+
 .history-loading.hidden { display: none; }
 
-/* ── History modal content ───────────────────────────────────────── */
 .history-card { max-width: 860px; }
+
 .history-hero {
     display: flex; align-items: center; justify-content: center;
     gap: 64px; margin: 16px 0 28px;
 }
+
 .history-today, .history-avg {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
+
 .history-label {
     font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--text-muted); font-weight: 700;
 }
+
 .history-temp {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
     font-size: 2.8rem; font-weight: 600;
 }
+
 .history-vs {
     font-size: 0.9rem; color: var(--text-muted); font-weight: 600;
     margin-top: 24px;
 }
+
 .history-verdict {
     text-align: center; font-size: 1.05rem; font-weight: 600;
     padding: 16px 20px; border-radius: 12px;
@@ -748,13 +871,17 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     margin: 0 0 20px;
     font-family: 'Inter', sans-serif;
 }
+
 .history-verdict.warmer { color: #ff8a65; }
+
 .history-verdict.cooler { color: #64b5f6; }
+
 .history-verdict.normal { color: var(--text-muted); }
+
 #history-chart { width: 100% !important; height: 280px !important; }
+
 #history-content.hidden { display: none; }
 
-/* ── ML #1: Forecast trend badge (linear regression, via Web Worker) */
 .forecast-trend {
     margin-top: 8px;
     font-size: 0.78rem;
@@ -764,18 +891,19 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     display: inline-block;
     background: rgba(255,255,255,0.06);
 }
+
 .trend-warm-badge   { color: #ff8a65; }
+
 .trend-cool-badge   { color: #64b5f6; }
+
 .trend-stable-badge { color: rgba(255,255,255,0.6); }
 
-/* ── ML #2: Similar-weather pinned city highlight (K-Means) ───────── */
 .saved-chip.chip-similar {
     border: 1.5px solid rgba(255,210,90,0.8);
     background: rgba(255,210,90,0.12);
     box-shadow: 0 0 8px rgba(255,210,90,0.25);
 }
 
-/* ── ML #3: Anomaly detection badge (Z-Score) ─────────────────────── */
 .history-anomaly {
     text-align: center;
     font-size: 0.85rem;
@@ -787,9 +915,9 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     padding: 12px 18px;
     margin: 0 0 20px;
 }
+
 .history-anomaly.hidden { display: none; }
 
-/* ── DL: Neural net prediction badge (TensorFlow.js) ──────────────── */
 .history-nn {
     text-align: center;
     font-size: 0.9rem;
@@ -801,4 +929,5 @@ button[title], #geolocation-button[title], #pin-button[title] { cursor: pointer;
     padding: 14px 18px;
     margin: 0 0 24px;
 }
+
 .history-nn.hidden { display: none; }
